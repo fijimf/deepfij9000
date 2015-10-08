@@ -20,10 +20,11 @@ trait Analysis[T] {
 At the highest level of generality, analysis constist of taking a seasons worth of data and converting using it to synthesize a function from a tuple of team and date to a type T.
 
 Typically when one considers analyses the type T is assumed to be numeric, but it need not be.  In fact if we treat T with greater generality, we can use analyses to generate further analyses.
-
+```scala
 def map(f:T=>U): Analysis[U] 
-def zip(f:(T,U)=>V): Analysis[V]
-
+def flatMap(f:T=>Option[U]: Analysis[U]
+def zip(a:Analysis[U], f:(T,U)=>V): Analysis[V]
+```
 With those two definitions, consider constructing an analysis of "winning percentage"
 ```scala
 class Games extends Analysis[List[Game]] {
