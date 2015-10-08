@@ -1,3 +1,5 @@
+import controllers.model.LogoUrls
+
 case class Conference (
   key:String,
   name:String,
