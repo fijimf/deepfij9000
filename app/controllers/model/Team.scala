@@ -1,7 +1,5 @@
 package controllers.model
 
-import controllers.model.{SocialData, Colors, LogoUrls}
-
 case class Team(
   key:String, 
   name:String, 

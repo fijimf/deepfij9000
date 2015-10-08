@@ -1,8 +1,8 @@
 package controllers.analysis
 
-import java.time.LocalDate
 
-import controllers.model.{Team, Season, Ncaa}
+import controllers.model.{Game, Team, Season, Ncaa}
+import org.joda.time.LocalDate
 
 trait Analysis[T] {
   self =>
@@ -33,4 +33,28 @@ trait Analysis[T] {
     }
   }
 }
+
+class BasicAnalyses {
+
+  object TeamIdentity extends Analysis[Team] {
+    override def analyze(ncaa: Ncaa, season: Season): (Team, LocalDate) => Option[Team] = (t, d) => Some(t)
+  }
+
+  object GameList extends Analysis[List[Game]] {
+    override def analyze(ncaa: Ncaa, season: Season): (Team, LocalDate) => Option[List[Game]] = (t, d) => {
+      Some(season.games.filter(g => (g.homeTeam == t || g.awayTeam == t) && d.isAfter(g.date.toLocalDate)))
+    }
+  }
+
+  val winList = GameList.zip(TeamIdentity, (games: List[Game], team: Team) => games.filter(_.isWinner(team)))
+  val lossList = GameList.zip(TeamIdentity, (games: List[Game], team: Team) => games.filter(_.isLoser(team)))
+  val wp = winList.zip(lossList, (wins: List[Game], losses: List[Game]) => (wins.size, losses.size) match {
+    case (0, 0) => None
+    case (w, l) => Some((1.0 * w) / (w + l))
+  })
+
+  val pointsFor = GameList.zip(TeamIdentity, (games: List[Game], team: Team) => games.map(_.score(team)))
+  val pointsAgainst = GameList.zip(TeamIdentity, (games: List[Game], team: Team) => games.map(g => g.opponent(team).flatMap(opp => g.score(opp))))
+}
+
 
