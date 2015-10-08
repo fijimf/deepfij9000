@@ -1,4 +1,4 @@
-package controllers.module
+package controllers.model
 
 import controllers.model.{SocialData, Colors, LogoUrls}
 

@@ -1,4 +1,4 @@
-import controllers.model.LogoUrls
+package controllers.model
 
 case class Conference (
   key:String,
