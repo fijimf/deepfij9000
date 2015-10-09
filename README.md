@@ -32,6 +32,12 @@ class Games extends Analysis[List[Game]] {
 }
 ``` 
 
+Rating and Ranking
+------------------
+
+
+
+If the type T of the analysis is is an Ordered, 
 
 Prediction
 ----------
@@ -61,3 +67,12 @@ trait ScorePredictor extends Predictor[(Double, Double)]
 ```scala
 trait ScoreDistributionPredictor extends Predictor[(Int, Int)=>Double)]
 ```
+
+
+Moving from Prediction to Rating
+--------------------------------
+
+
+Moving form Rating to Prediction
+--------------------------------
+
