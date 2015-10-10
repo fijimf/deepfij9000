@@ -1,0 +1,24 @@
+@(user:Option[model.User])
+<div class="navbar navbar-static-top navbar-inverse">
+    <div class="navbar-inner">
+        <a class="brand" href="#"><img class="spin" style="margin-top: -7px;margin-bottom: -7px;" src="@routes.Assets.versioned("images/deepfij-tiny.png")"></a>
+        <ul class="nav">
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="#">Teams</a></li>
+            <li><a href="#">Stats</a></li>
+            <li><a href="#">Analysis</a></li>
+            <li><a href="#">About</a></li>
+
+            <form class="navbar-search pull-left" action="/deepfij/search" method="GET">
+                <input id="q" name="q" type="text" class="search-query" placeholder="Teams, nicknames, conferences ...">
+            </form>
+
+        </ul>
+
+        @if(user.isEmpty) {
+            <p class="pull-right navbar-text"><a href="http://www.cafepress.com/fijimf" target="_blank">Shop</a></p>
+        } else {
+            <p class="pull-right navbar-text">Welcome @user.get</p>
+        }
+    </div>
+</div>

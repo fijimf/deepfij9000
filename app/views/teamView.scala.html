@@ -1,0 +1,16 @@
+@import model.Team
+@(team: Team)
+
+@base(team.name, None, team.colors.flatMap(_.primary)) {
+    <div class="row-fluid team-header-row" style="border-top : 12px solid @team.colors.map(_.primary).getOrElse("#5959595");border-bottom:12px solid @team.colors.map(_.primary).getOrElse("#5959595"); background-color: #ffffff; padding-left: 0;" >
+    <div class="span1" id="team-header-logo" style="background-color: @team.colors.map(_.primary).getOrElse("#5959595"); width:150px;">
+        <div style="background-color: white; height:100px; width:100px; border-radius: 50px; border- margin-left:25px;">
+            <img class="spin" style="padding : 15px;" src="@team.logos.map(_.bigUrl).getOrElse("")">
+        </div>
+    </div>
+    <div class="span9">
+        <h3 id="team-header-name" >Georgetown Hoyas</h3>
+        <h4 id="team-header-record">10-2, 1-1 Big East</h4>
+    </div>
+</div>
+    }

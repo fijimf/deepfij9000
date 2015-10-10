@@ -6,6 +6,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
+import controllers.model.{Colors, LogoUrls, Team}
 import play.api._
 import play.api.mvc._
 import scala.concurrent.duration._
@@ -21,6 +22,20 @@ class Application @Inject() (@Named("team-load-actor") teamLoad: ActorRef)
 
   def other = Action.async {
     (teamLoad ? "Jim").map(s=> Ok(views.html.index(s.toString)))
+  }
+
+  def team = Action {
+    Ok(views.html.teamView(Team(
+      "georgetown",
+      "Georgetown",
+      None,
+      Some("Hoyas"),
+      Some( LogoUrls(
+        Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/g/georgetown.40.png"),
+        Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/g/georgetown.70.png")
+      )
+      ),Some(Colors(Some("#472112"),Some("#BBCCDD") )))))
+
   }
 
 

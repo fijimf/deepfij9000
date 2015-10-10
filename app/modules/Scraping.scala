@@ -22,7 +22,7 @@ object HTML {
 }
 
 class TeamLoadActor @Inject()(ws: WSClient) extends Actor {
-
+  import scala.concurrent.ExecutionContext.Implicits.global
   val responseHandler: (Try[WSResponse]) => Map[String, String] = {
     case Success(response) =>
       HTML.loadString(response.body) match {

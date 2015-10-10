@@ -1,0 +1,32 @@
+@(title:String, user:Option[model.User], bgColor:Option[String])(content:Html)
+
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>@title</title>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/bootstrap.min.css")">
+        <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/main.css")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+        <script src="@routes.Assets.versioned("javascripts/jquery-1.9.0.min.js")" type="text/javascript"></script>
+        <script src="@routes.Assets.versioned("javascripts/bootstrap.min.js")" type="text/javascript"></script>
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script src="@routes.Assets.versioned("javascripts/admin.js")" type="text/javascript"></script>
+        <script src="@routes.Assets.versioned("javascripts/statistics.js")" type="text/javascript"></script>
+    </head>
+    <body class="team-page" style="background-color: @bgColor.getOrElse("#ffffff")" >
+        @navbar(user)
+        <div class="container-fluid">
+            <div class="row-fluid">
+                <div class="span12">
+                    <div class="container-fluid content-sheet">
+
+
+                        @content
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
