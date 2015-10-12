@@ -31,10 +31,10 @@ class Application @Inject() (@Named("team-load-actor") teamLoad: ActorRef)
       None,
       Some("Hoyas"),
       Some( LogoUrls(
-        Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/g/georgetown.40.png"),
-        Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/g/georgetown.70.png")
+        Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/w/william-mary.40.png"),
+        Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/w/william-mary.70.png")
       )
-      ),Some(Colors(Some("#472112"),Some("#BBCCDD") )))))
+      ),Some(Colors(Some("#116633"),None )))))
 
   }
 
