@@ -123,6 +123,12 @@ class TeamLoadActor @Inject()(ws: WSClient) extends Actor {
   }
 }
 
+sealed trait ScrapeRequest
+case class ShortTeamAndConferenceByYear(y:Int)
+case class ShortTeamByYearAndCOnference(y:Int, c:Int)
+case class LongNameAndKeyByInitial(c:Char)
+case class ShortNameAndKeyByStatAndPage(s:Int, p:Int)
+case class TeamDetail(key:String)
 //implicit val timeout: Timeout = Timeout(15.seconds)
 //implicit val system: ActorSystem = context.system
 //import scala.concurrent.ExecutionContext.Implicits.global
