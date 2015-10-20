@@ -4,6 +4,7 @@ import java.io.{StringReader, Reader}
 
 import akka.actor.{ActorRef, ActorSystem, Actor}
 import com.google.inject.{Inject, AbstractModule}
+import controllers.{TeamMasterRec, TeamMaster, TeamMap, TeamConfMap}
 import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
 import play.api.libs.concurrent.AkkaGuiceSupport
 import play.api.libs.ws.{WSRequest, WSResponse, WS, WSClient}
@@ -58,7 +59,7 @@ class TeamLoadActor @Inject()(ws: WSClient) extends Actor {
         case Success(response) =>
           HTML.loadString(response.body) match {
             case Success(htmlNode) =>
-              mySender ! extractMaps(htmlNode)
+              mySender ! TeamConfMap(extractMaps(htmlNode))
             case Failure(ex) => sender ! "Failed with exception " + ex.getMessage
           }
         case Failure(ex) => sender ! "Failed with exception " + ex.getMessage
@@ -69,14 +70,53 @@ class TeamLoadActor @Inject()(ws: WSClient) extends Actor {
         case Success(response) =>
           HTML.loadString(response.body) match {
             case Success(htmlNode) =>
-              mySender ! extractTeamMap(htmlNode)
+              mySender ! TeamMap(extractTeamMap(htmlNode) )
             case Failure(ex) => sender ! "Failed with exception " + ex.getMessage
+          }
+        case Failure(ex) => sender ! "Failed with exception " + ex.getMessage
+      }
+    case (initial:Char) =>
+      val mySender = sender()
+      ws.url("http://www.ncaa.com/schools/" + initial + "/").get().onComplete {
+        case Success(response) =>
+          HTML.loadString(response.body) match {
+            case Success(node)=>
+              val list: List[TeamMasterRec] = teamNamesFromAlphaPage(node)
+              println(list)
+              mySender ! TeamMaster( list )
+            case Failure(ex) => sender ! "Failed with exception " + ex.getMessage
+
           }
         case Failure(ex) => sender ! "Failed with exception " + ex.getMessage
       }
     case _ =>
       println("Unexpected message")
   }
+
+  def teamNamesFromAlphaPage(node: Node):List[TeamMasterRec] = {
+    val schoolList: Option[Node] = (node \\ "div").find(n => attrMatch(n, "id", "school-list")).flatMap(_.headOption)
+    extractNamesAndKeys(schoolList).map(t=>TeamMasterRec(t._1, t._2)).toList
+  }
+
+  def extractNamesAndKeys(schoolList: Option[Node]): Iterator[(String, String)] = {
+    for (d <- schoolList.iterator;
+         link <- d \\ "a";
+         href <- attrValue(link, "href") if href.startsWith("/schools/"))
+      yield {
+        href.substring(9) -> link.text
+      }
+  }
+  def attrValue(n: Node, attr: String): Option[String] = {
+    n.attribute(attr).flatMap(_.headOption).map(_.text)
+  }
+
+  def attrMatch(n: Node, attr: String, value: String): Boolean = {
+    n.attribute(attr) match {
+      case Some(nodeStr) => nodeStr.exists(_.text == value)
+      case _ => false
+    }
+  }
+
 
   def createURL(year: Int, confId: Int = -1): String = {
     "http://stats.ncaa.org/team/inst_team_list?academic_year=" + year + "&conf_id="+confId+"&division=1&sport_code=MBB"

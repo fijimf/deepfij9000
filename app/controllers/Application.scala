@@ -8,10 +8,12 @@ import akka.util.Timeout
 import com.google.inject.name.Named
 import controllers.model.{Colors, LogoUrls, Team}
 import play.api._
+import play.api.libs.iteratee.{Input, Step, Iteratee, Enumerator}
 import play.api.mvc._
 import scala.concurrent.duration._
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{Await, Future, ExecutionContext}
+import scala.util.{Failure, Success}
 
 class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
                            (implicit ec: ExecutionContext) extends Controller {
@@ -25,18 +27,59 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
     (teamLoad ? "Jim").map(s => Ok(views.html.index(s.toString)))
   }
 
-  def scrape = {
-    Action.async {
-      List(2015, 2014, 2013, 2012).foreach(yr=> {
-         (teamLoad ? yr).mapTo[(Map[Int, String],Map[Int, String])].map(tup=>{
+  def scrape = Action {
+    val future: Future[TeamConfMap] = List(2015, 2014, 2013, 2012).foldLeft(Future.successful(TeamConfMap()))((f: Future[TeamConfMap], yr: Int) => {
+      for (
+        t0 <- f;
+        t1 <- (teamLoad ? yr).mapTo[TeamConfMap]
+      ) yield t0.merge(t1)
+    })
 
-         })
-      }
 
-
-      future.map(r => Ok(r.toString))
-    }
+    val r = Await.result(future, 300.seconds)
+    Ok("Done " + r.cm.data.size + " conferences; " + r.tm.data.size + " teams;")
   }
+
+  def teamPageMaster = Action {
+
+    val future: Future[TeamMaster] = "abcdefghijklmnopqrstuvwxyz".foldLeft(Future.successful(TeamMaster()))((f: Future[TeamMaster], c: Char) => {
+      for (
+        t0 <- f;
+        t1 <- (teamLoad ? c).mapTo[TeamMaster]
+      ) yield t0.merge(t1)
+    })
+
+    val r = Await.result(future, 300.seconds)
+    Ok("Done" + r)
+  }
+
+//  def createNcaaOrgScraper(years:List[Int]):Enumerator[TeamConfMap] = {
+//
+//    new Enumerator[TeamConfMap] {
+//      override def apply[List[Int]](i: Iteratee[TeamConfMap, List[Int]]): Future[Iteratee[TeamConfMap, List[Int]]] =  {
+//
+//          i.fold {
+//            case Step.Done(result, remaining) => Future(i)
+//            case Step.Cont(k: (Input[TeamConfMap] => Iteratee[TeamConfMap, List[Int]])) => {
+//              if (index < items.size) {
+//                val item = items(index)
+//                println(s"El($item)")
+//                index += 1
+//                val newIteratee = k(Input.El(item))
+//                apply(newIteratee)
+//              } else {
+//
+//                Future(k(Input.EOF))
+//              }
+//            }
+//
+//            // iteratee is in error state
+//            case Step.Error(message, input: Input[TeamConfMap]) => Future(i)
+//      }
+//
+//    }
+//  }
+
 
   def team = Action {
     Ok(views.html.teamView(Team(
@@ -54,3 +97,39 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
 
 
 }
+
+object TeamConfMap {
+  def apply(tup: (Map[Int, String], Map[Int, String])): TeamConfMap = {
+    TeamConfMap(ConferenceMap(tup._1), TeamMap(tup._2))
+  }
+}
+
+case class TeamConfMap(cm: ConferenceMap = ConferenceMap(), tm: TeamMap = TeamMap()) {
+  def merge(tcm: TeamConfMap): TeamConfMap = {
+    TeamConfMap(cm.merge(tcm.cm), tm.merge(tcm.tm))
+  }
+}
+
+case class ConferenceMap(data: Map[Int, String] = Map.empty) {
+  def merge(cm: ConferenceMap): ConferenceMap = {
+    ConferenceMap(data ++ cm.data)
+  }
+}
+
+case class TeamMap(data: Map[Int, String] = Map.empty) {
+  def merge(tm: TeamMap): TeamMap = {
+    TeamMap(data ++ tm.data)
+  }
+}
+
+case class TeamMaster(teams:List[TeamMasterRec]=List.empty[TeamMasterRec]) {
+  val byKey = teams.map(r=>r.key-> r.name).toMap
+  val byName = teams.map(r=>r.name-> r.key).toMap
+  def merge(tm:TeamMaster):TeamMaster = {
+    TeamMaster(teams++tm.teams)
+  }
+}
+
+sealed trait NcaaOrgScrapeStatus
+
+case class TeamMasterRec(key:String, name:String)
