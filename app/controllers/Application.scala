@@ -7,6 +7,7 @@ import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
 import controllers.model.{Colors, LogoUrls, Team}
+import modules.scraping.{ShortTeamAndConferenceByYear, LongNameAndKeyByInitial}
 import play.api._
 import play.api.libs.iteratee.{Input, Step, Iteratee, Enumerator}
 import play.api.mvc._
@@ -31,7 +32,7 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
     val future: Future[TeamConfMap] = List(2015, 2014, 2013, 2012).foldLeft(Future.successful(TeamConfMap()))((f: Future[TeamConfMap], yr: Int) => {
       for (
         t0 <- f;
-        t1 <- (teamLoad ? yr).mapTo[TeamConfMap]
+        t1 <- (teamLoad ? ShortTeamAndConferenceByYear(yr)).mapTo[TeamConfMap]
       ) yield t0.merge(t1)
     })
 
@@ -45,7 +46,7 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
     val future: Future[TeamMaster] = "abcdefghijklmnopqrstuvwxyz".foldLeft(Future.successful(TeamMaster()))((f: Future[TeamMaster], c: Char) => {
       for (
         t0 <- f;
-        t1 <- (teamLoad ? c).mapTo[TeamMaster]
+        t1 <- (teamLoad ? LongNameAndKeyByInitial(c)).mapTo[TeamMaster]
       ) yield t0.merge(t1)
     })
 
@@ -98,11 +99,6 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
 
 }
 
-object TeamConfMap {
-  def apply(tup: (Map[Int, String], Map[Int, String])): TeamConfMap = {
-    TeamConfMap(ConferenceMap(tup._1), TeamMap(tup._2))
-  }
-}
 
 case class TeamConfMap(cm: ConferenceMap = ConferenceMap(), tm: TeamMap = TeamMap()) {
   def merge(tcm: TeamConfMap): TeamConfMap = {
