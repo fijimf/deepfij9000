@@ -23,11 +23,28 @@ case class ShortTeamByYearAndConference(y: Int, c: Int) extends ScrapeRequest[Te
 }
 
 case class LongNameAndKeyByInitial(c: Char) extends ScrapeRequest[TeamMaster] with NcaaComTeamScraper {
-  override def url: String = "http://www.ncaa.com/schools/" + c + "/"
+  override def url = "http://www.ncaa.com/schools/" + c + "/"
 
   override def scrape(n: Node) = TeamMaster(teamNamesFromAlphaPage(n))
 }
 
-//case class ShortNameAndKeyByStatAndPage(s: Int, p: Int) extends ScrapeRequest
-//
-//case class TeamDetail(key: String) extends ScrapeRequest
+case class ShortNameAndKeyByStatAndPage(s: Int, p: Int) extends ScrapeRequest {
+  override def url = "http" 
+}
+
+case class TeamDetail(key: String) extends ScrapeRequest[TeamDetail] {
+  override def url = "http://www.ncaa.com/schools/" + key
+  override def scrape(n:Node) = {
+    val longName = schoolName(node).getOrElse(shortName.getOrElse(key.replaceAll("-"," ").capitalize))
+    val metaInfo = schoolMetaInfo(node)
+    val nickname = metaInfo.getOrElse("nickname", "MISSING")
+    val primaryColor = schoolPrimaryColor(node)
+    val secondaryColor = primaryColor.map(c => desaturate(c, 0.4))
+    val logoUrl = schoolLogo(node)
+    val officialUrl = schoolOfficialWebsite(node)
+    val officialTwitter = schoolOfficialTwitter(node)
+    val conference = metaInfo.getOrElse("conf", "MISSING")
+      TeamDetail(conference, Team(0, key, shortName.getOrElse(longName), longName, nickname, primaryColor, secondaryColor, logoUrl, officialUrl, officialTwitter))
+    
+  }
+}
