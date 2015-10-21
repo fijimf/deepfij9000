@@ -32,7 +32,7 @@ case class ShortNameAndKeyByStatAndPage(s: Int, p: Int) extends ScrapeRequest {
   override def url = "http" 
 }
 
-case class TeamDetail(key: String) extends ScrapeRequest[TeamDetail] {
+case class TeamDetail(key: String) extends ScrapeRequest[TeamDetail] with NcaaComTeamScraper {
   override def url = "http://www.ncaa.com/schools/" + key
   override def scrape(n:Node) = {
     val longName = schoolName(node).getOrElse(shortName.getOrElse(key.replaceAll("-"," ").capitalize))
