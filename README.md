@@ -19,6 +19,10 @@ trait Analysis[T] {
 
 At the highest level of generality, analysis constist of taking a seasons worth of data and converting using it to synthesize a function from a tuple of team and date to a type T.
 
+A Season can communicate its data Seq[LocalDate] as well as the list of teams Seq[Team].  As such the domain of the resultant function is finite and limited.  This leads to opportunities for bothe memoization and caching.
+
+
+
 Typically when one considers analyses the type T is assumed to be numeric, but it need not be.  In fact if we treat T with greater generality, we can use analyses to generate further analyses.
 ```scala
 def map(f:T=>U): Analysis[U] 
