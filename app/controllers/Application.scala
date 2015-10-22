@@ -7,7 +7,7 @@ import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
 import controllers.model.{Colors, LogoUrls, Team}
-import modules.scraping.{ShortTeamAndConferenceByYear, LongNameAndKeyByInitial}
+import modules.scraping.{TeamDetail, ShortTeamAndConferenceByYear, LongNameAndKeyByInitial}
 import play.api._
 import play.api.libs.iteratee.{Input, Step, Iteratee, Enumerator}
 import play.api.mvc._
@@ -54,6 +54,14 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
     Ok("Done" + r)
   }
 
+  def teamLoadPage = Action {
+    val future: Future[Team] =  (teamLoad ? TeamDetail("georgetown", "Georgetown")).mapTo[Team]
+
+
+    val r = Await.result(future, 300.seconds)
+    Ok("Done" + r)
+  }
+
 //  def createNcaaOrgScraper(years:List[Int]):Enumerator[TeamConfMap] = {
 //
 //    new Enumerator[TeamConfMap] {
@@ -86,8 +94,8 @@ class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
     Ok(views.html.teamView(Team(
       "georgetown",
       "Georgetown",
-      None,
-      Some("Hoyas"),
+      "Georgetown University",
+      "Hoyas",
       Some(LogoUrls(
         Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/w/william-mary.40.png"),
         Some("http://i.turner.ncaa.com/dr/ncaa/ncaa7/release/sites/default/files/images/logos/schools/w/william-mary.70.png")

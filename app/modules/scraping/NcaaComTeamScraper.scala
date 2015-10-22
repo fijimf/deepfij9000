@@ -19,6 +19,11 @@ trait NcaaComTeamScraper {
         href.substring(9) -> link.text
       }
   }
+
+  def teamNamesFromStatPage(node: Node):Seq[(String, String)] = {
+    val schoolList: Option[Node] = (node \\ "div").find(n => attrMatch(n, "class", "ncaa-stat-category-stats")).flatMap(_.headOption)
+    extractNamesAndKeys(schoolList).toSeq
+  }
   
     def schoolName(n: Node): Option[String] = {
     (n \\ "span").find(n => attrMatch(n, "class", "school-name")).map(_.text)
@@ -53,7 +58,7 @@ trait NcaaComTeamScraper {
     val b = Integer.parseInt(c.substring(5,7),16)
     "rgba( %d, %d, %d, %f)".format(r,g,b,a)
   }
-}
+
 
 
   def attrValue(n: Node, attr: String): Option[String] = {
