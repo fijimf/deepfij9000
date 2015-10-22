@@ -1,5 +1,6 @@
 package modules.scraping
 
+import controllers.model.{SocialData, Colors, LogoUrls, Team}
 import controllers.{TeamMaster, ConferenceMap, TeamMap, TeamConfMap}
 
 import scala.xml.Node
@@ -28,23 +29,26 @@ case class LongNameAndKeyByInitial(c: Char) extends ScrapeRequest[TeamMaster] wi
   override def scrape(n: Node) = TeamMaster(teamNamesFromAlphaPage(n))
 }
 
-case class ShortNameAndKeyByStatAndPage(s: Int, p: Int) extends ScrapeRequest {
-  override def url = "http" 
+case class ShortNameAndKeyByStatAndPage(s: Int, p: Int) extends ScrapeRequest[Seq[(String, String)]] with NcaaComTeamScraper {
+  override def url = "http://www.ncaa.com/stats/basketball-men/d1/current/team/" + s + "/p" + p
+
+  override def scrape(n: Node): Seq[(String, String)] = teamNamesFromStatPage(n)
 }
 
-case class TeamDetail(key: String) extends ScrapeRequest[TeamDetail] with NcaaComTeamScraper {
+case class TeamDetail(key: String, shortName:String) extends ScrapeRequest[Team] with NcaaComTeamScraper {
   override def url = "http://www.ncaa.com/schools/" + key
-  override def scrape(n:Node) = {
-    val longName = schoolName(node).getOrElse(shortName.getOrElse(key.replaceAll("-"," ").capitalize))
-    val metaInfo = schoolMetaInfo(node)
+
+  override def scrape(n: Node) = {
+    val longName = schoolName(n).getOrElse(shortName)
+    val metaInfo = schoolMetaInfo(n)
     val nickname = metaInfo.getOrElse("nickname", "MISSING")
-    val primaryColor = schoolPrimaryColor(node)
+    val primaryColor = schoolPrimaryColor(n)
     val secondaryColor = primaryColor.map(c => desaturate(c, 0.4))
-    val logoUrl = schoolLogo(node)
-    val officialUrl = schoolOfficialWebsite(node)
-    val officialTwitter = schoolOfficialTwitter(node)
+    val logoUrl = schoolLogo(n)
+    val officialUrl = schoolOfficialWebsite(n)
+    val officialTwitter = schoolOfficialTwitter(n)
     val conference = metaInfo.getOrElse("conf", "MISSING")
-      TeamDetail(conference, Team(0, key, shortName.getOrElse(longName), longName, nickname, primaryColor, secondaryColor, logoUrl, officialUrl, officialTwitter))
-    
+    Team(key, shortName, longName, nickname,Some(LogoUrls(logoUrl, logoUrl.map(_.replace("40","70")))), Some(Colors(primaryColor,secondaryColor)  ), Some(SocialData(officialUrl,officialTwitter, None,None)))
+
   }
 }
