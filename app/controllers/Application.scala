@@ -16,7 +16,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, ExecutionContext}
 import scala.util.{Failure, Success}
 
-class Application @Inject()(@Named("team-load-actor") teamLoad: ActorRef)
+class Application @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
                            (implicit ec: ExecutionContext) extends Controller {
   implicit val timeout = Timeout(105.seconds)
 

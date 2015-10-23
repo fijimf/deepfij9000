@@ -18,6 +18,6 @@ import scala.xml.parsing.NoBindingFactoryAdapter
 
 class ScrapingModule extends AbstractModule with AkkaGuiceSupport {
   def configure() = {
-    bindActor[ScrapingActor]("team-load-actor")
+    bindActor[ScrapingActor]("data-load-actor")
   }
 }
