@@ -6,7 +6,9 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
-import modules.scraping.{ShortNameAndKeyByStatAndPage, ShortTeamByYearAndConference, ShortTeamAndConferenceByYear}
+import controllers.model.Team
+import jdk.internal.org.objectweb.asm.tree.TableSwitchInsnNode
+import modules.scraping.{TeamDetail, ShortNameAndKeyByStatAndPage, ShortTeamByYearAndConference, ShortTeamAndConferenceByYear}
 import play.api.Logger
 import play.api.mvc.{Action, Controller}
 import play.api.libs.json.Json
@@ -19,6 +21,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
   implicit val timeout = Timeout(105.seconds)
 
   def loadReferenceData = Action {
+    logger.info("Loading preliminary team/conference data.")
     val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
     val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
     val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
@@ -27,16 +30,26 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
       caby <- confAlignmentByYear
     ) {
       val fromCom: Set[String] = tsn.values.toSet
-      val fromOrg: Set[String] = caby.values.map(_.values.flatten).flatten.toSet
+      val fromOrg: Set[String] = caby.values.flatMap(_.values.flatten).toSet
       val diff1: Set[String] = fromCom.diff(fromOrg)
       val diff2: Set[String] = fromOrg.diff(fromCom)
-      logger.info(diff1.toString())
-      logger.info(diff2.toString())
+      logger.info("Teams known to com but not org: "+diff1.toString())
+      logger.info("Teams known to com but not org: "+diff2.toString())
 
     }
-    val s = Await.result(teamShortNames, 300.seconds)
-    val r = Await.result(confAlignmentByYear, 300.seconds)
-    Ok(Json.toJson(r))
+    logger.info("Loading team detail")
+
+    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
+      Future.sequence(tsn.keys.map(k => {
+        val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( k, tsn(k))).mapTo[Team]
+        eventualTeam
+      }))
+    }).map(_.toList)
+
+
+    val s = Await.result(teamMaster, 600.seconds)
+    //val r = Await.result(confAlignmentByYear, 300.seconds)
+    Ok(s.toString())
   }
 
   def conferenceAlignmentByYear(academicYears: List[Int]): Future[Map[Int, Map[String, List[String]]]] = {

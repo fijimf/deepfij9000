@@ -20,6 +20,9 @@ class ScrapingActor @Inject()(ws: WSClient) extends Actor {
       ws.url(r.url).get().onComplete {
         case Success(response) =>
           logger.info("%d - %s (%d bytes)".format(response.status, response.statusText, response.body.length))
+          if (response.status!=200){
+            logger.info(r.url)
+          }
           HTML.loadString(response.body) match {
             case Success(node)=>
               mySender ! r.scrape(node)
