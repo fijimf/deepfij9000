@@ -36,7 +36,7 @@ case class ShortNameAndKeyByStatAndPage(s: Int, p: Int) extends ScrapeRequest[Se
 }
 
 case class TeamDetail(key: String, shortName:String) extends ScrapeRequest[Team] with NcaaComTeamScraper {
-  override def url = "http://www.ncaa.com/schools/" + key+"/basketball-men"
+  override def url = "http://www.ncaa.com/schools/" + key+"/"
 
   override def scrape(n: Node) = {
     val longName = schoolName(n).getOrElse(shortName)

@@ -1,11 +1,12 @@
 package modules.scraping
 
 import controllers.TeamMasterRec
+import play.api.Logger
 
 import scala.xml.Node
 
 trait NcaaComTeamScraper {
-
+  val logger = Logger.apply(this.getClass)
   def teamNamesFromAlphaPage(node: Node): List[TeamMasterRec] = {
     val schoolList: Option[Node] = (node \\ "div").find(n => attrMatch(n, "id", "school-list")).flatMap(_.headOption)
     extractNamesAndKeys(schoolList).map(t => TeamMasterRec(t._1, t._2)).toList
@@ -45,6 +46,7 @@ trait NcaaComTeamScraper {
 
   def schoolMetaInfo(n:Node):Map[String,String] = {
     val items: Seq[Node] = (n \\ "li").filter(n => attrMatch(n, "class", "school-info"))
+    logger.info(items.mkString("(",", ",")" ))
     items.foldLeft(Map.empty[String, String])((m:Map[String, String], i:Node)=>{
       val key = (i \ "span").text.trim
       val value = i.text.replace(key,"").trim

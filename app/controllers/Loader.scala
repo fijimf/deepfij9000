@@ -20,6 +20,12 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
   val logger: Logger = Logger(this.getClass())
   implicit val timeout = Timeout(105.seconds)
 
+  def loadSingleTeam = Action {
+    val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( "georgetown", "Georgetown")).mapTo[Team]
+    val team = Await.result(eventualTeam, 300.seconds)
+    Ok(team.toString)
+  }
+
   def loadReferenceData = Action {
     logger.info("Loading preliminary team/conference data.")
     val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
@@ -39,12 +45,20 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
     }
     logger.info("Loading team detail")
 
-    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
-      Future.sequence(tsn.keys.map(k => {
-        val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( k, tsn(k))).mapTo[Team]
-        eventualTeam
-      }))
-    }).map(_.toList)
+//    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
+//      Future.sequence(tsn.keys.map(k => {
+//        val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( k, tsn(k))).mapTo[Team]
+//        eventualTeam
+//      }))
+//    }).map(_.toList)
+
+    val teamMaster: Future[List[Team]] = teamShortNames.map((tsn: Map[String, String]) => {
+      tsn.keys.grouped(4).map((is: Iterable[String]) => {
+        Await.result(Future.sequence(is.map((k: String) => {
+          (teamLoad ? TeamDetail(k, tsn(k))).mapTo[Team]
+        })), 600.seconds)
+      }).flatten.toList
+    })
 
 
     val s = Await.result(teamMaster, 600.seconds)
