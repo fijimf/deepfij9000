@@ -11,13 +11,16 @@ import jdk.internal.org.objectweb.asm.tree.TableSwitchInsnNode
 import modules.scraping.{TeamDetail, ShortNameAndKeyByStatAndPage, ShortTeamByYearAndConference, ShortTeamAndConferenceByYear}
 import play.api.Logger
 import play.api.mvc.{Action, Controller}
-import play.api.libs.json.Json
+import play.api.libs.json.{JsString, JsObject, Json}
+import play.modules.reactivemongo.json.collection.JSONCollection
+import play.modules.reactivemongo.{ReactiveMongoComponents, MongoController, ReactiveMongoApi}
+import reactivemongo.api.ReadPreference
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
-                      (implicit ec: ExecutionContext) extends Controller {
-  val logger: Logger = Logger(this.getClass())
+class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiveMongoApi: ReactiveMongoApi)
+                      (implicit ec: ExecutionContext) extends Controller  with MongoController with ReactiveMongoComponents {
+  val logger: Logger = Logger(this.getClass)
   implicit val timeout = Timeout(105.seconds)
 
   def loadSingleTeam = Action {
@@ -30,20 +33,36 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
     logger.info("Loading preliminary team/conference data.")
     val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
     val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
-    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
-    for (
-      tsn <- teamShortNames;
-      caby <- confAlignmentByYear
-    ) {
-      val fromCom: Set[String] = tsn.values.toSet
-      val fromOrg: Set[String] = caby.values.flatMap(_.values.flatten).toSet
-      val diff1: Set[String] = fromCom.diff(fromOrg)
-      val diff2: Set[String] = fromOrg.diff(fromCom)
-      logger.info("Teams known to com but not org: "+diff1.toString())
-      logger.info("Teams known to com but not org: "+diff2.toString())
+//    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
+//    for (
+//      tsn <- teamShortNames;
+//      caby <- confAlignmentByYear
+//    ) {
+//      val fromCom: Set[String] = tsn.values.toSet
+//      val fromOrg: Set[String] = caby.values.flatMap(_.values.flatten).toSet
+//      val diff1: Set[String] = fromCom.diff(fromOrg)
+//      val diff2: Set[String] = fromOrg.diff(fromCom)
+//      logger.info("Teams known to com but not org: "+diff1.toString())
+//      logger.info("Teams known to com but not org: "+diff2.toString())
+//
+//    }
+    val aliasMap: Future[Map[String, String]] = loadAliasMap()
 
+    val teamShortNames1 = for (
+      tsn <- teamShortNames;
+      am <- aliasMap
+    ) yield {
+      logger.info("ALIAS MAP: "+am.keys.mkString(", "))
+      tsn.map((tup: (String, String)) => {
+        if (am.contains(tup._1)) {
+          am(tup._1) -> tup._2
+        } else {
+          tup
+        }
+      })
     }
     logger.info("Loading team detail")
+
 
 //    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
 //      Future.sequence(tsn.keys.map(k => {
@@ -52,7 +71,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
 //      }))
 //    }).map(_.toList)
 
-    val teamMaster: Future[List[Team]] = teamShortNames.map((tsn: Map[String, String]) => {
+    val teamMaster: Future[List[Team]] = teamShortNames1.map((tsn: Map[String, String]) => {
       tsn.keys.grouped(4).map((is: Iterable[String]) => {
         Await.result(Future.sequence(is.map((k: String) => {
           (teamLoad ? TeamDetail(k, tsn(k))).mapTo[Team]
@@ -92,5 +111,19 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
         t1 <- (teamLoad ? ShortNameAndKeyByStatAndPage(stat, p)).mapTo[Seq[(String, String)]]
       ) yield t0 ++ t1
     }).map(_.toMap)
+  }
+
+  def loadAliasMap():Future[Map[String, String]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import play.modules.reactivemongo.json._
+
+    val aliasCollection = db.collection[JSONCollection]("aliases")
+    aliasCollection.find(Json.obj()).cursor[JsObject](ReadPreference.primaryPreferred).collect[List]().map(list => {
+      list.map(jso => {
+        val a: String = jso.value("alias").as[String]
+        val k: String = jso.value("key").as[String]
+        a -> k
+      }).toMap
+    })
   }
 }
