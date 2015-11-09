@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   specs2 % Test
 )
 libraryDependencies += "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2.1"
-
+libraryDependencies += "org.reactivemongo" %% "play2-reactivemongo" % "0.11.7.play24"
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
