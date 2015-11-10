@@ -10,6 +10,14 @@ case class Team(
   socialMedia:Option[SocialData] = None
 )
 
+object Team {
+  import reactivemongo.bson._
+  implicit val teamHandler: BSONHandler[BSONDocument, Team] = Macros.handler[Team]
+  implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]
+  implicit val logoUrlsHandler: BSONHandler[BSONDocument, LogoUrls] = Macros.handler[LogoUrls]
+  implicit val socialDataHandler: BSONHandler[BSONDocument, SocialData] = Macros.handler[SocialData]
+}
+
 
 
 

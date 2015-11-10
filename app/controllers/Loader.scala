@@ -19,40 +19,47 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiveMongoApi: ReactiveMongoApi)
-                      (implicit ec: ExecutionContext) extends Controller  with MongoController with ReactiveMongoComponents {
+                      (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
   val logger: Logger = Logger(this.getClass)
   implicit val timeout = Timeout(105.seconds)
 
   def loadSingleTeam = Action {
-    val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( "georgetown", "Georgetown")).mapTo[Team]
+    val eventualTeam: Future[Team] = (teamLoad ? TeamDetail("georgetown", "Georgetown")).mapTo[Team]
     val team = Await.result(eventualTeam, 300.seconds)
     Ok(team.toString)
+  }
+
+  def loadConferenceMaps = Action {
+    val academicYears: List[Int] = List(2015)
+    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
+     val result: Map[Int, Map[String, List[String]]] = Await.result(confAlignmentByYear, 5.minutes)
+     Ok(result.toString)
   }
 
   def loadReferenceData = Action {
     logger.info("Loading preliminary team/conference data.")
     val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
     val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
-//    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
-//    for (
-//      tsn <- teamShortNames;
-//      caby <- confAlignmentByYear
-//    ) {
-//      val fromCom: Set[String] = tsn.values.toSet
-//      val fromOrg: Set[String] = caby.values.flatMap(_.values.flatten).toSet
-//      val diff1: Set[String] = fromCom.diff(fromOrg)
-//      val diff2: Set[String] = fromOrg.diff(fromCom)
-//      logger.info("Teams known to com but not org: "+diff1.toString())
-//      logger.info("Teams known to com but not org: "+diff2.toString())
-//
-//    }
+    //    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
+    //    for (
+    //      tsn <- teamShortNames;
+    //      caby <- confAlignmentByYear
+    //    ) {
+    //      val fromCom: Set[String] = tsn.values.toSet
+    //      val fromOrg: Set[String] = caby.values.flatMap(_.values.flatten).toSet
+    //      val diff1: Set[String] = fromCom.diff(fromOrg)
+    //      val diff2: Set[String] = fromOrg.diff(fromCom)
+    //      logger.info("Teams known to com but not org: "+diff1.toString())
+    //      logger.info("Teams known to com but not org: "+diff2.toString())
+    //
+    //    }
     val aliasMap: Future[Map[String, String]] = loadAliasMap()
 
     val teamShortNames1 = for (
       tsn <- teamShortNames;
       am <- aliasMap
     ) yield {
-      logger.info("ALIAS MAP: "+am.keys.mkString(", "))
+      logger.info("ALIAS MAP: " + am.keys.mkString(", "))
       tsn.map((tup: (String, String)) => {
         if (am.contains(tup._1)) {
           am(tup._1) -> tup._2
@@ -64,12 +71,12 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     logger.info("Loading team detail")
 
 
-//    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
-//      Future.sequence(tsn.keys.map(k => {
-//        val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( k, tsn(k))).mapTo[Team]
-//        eventualTeam
-//      }))
-//    }).map(_.toList)
+    //    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
+    //      Future.sequence(tsn.keys.map(k => {
+    //        val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( k, tsn(k))).mapTo[Team]
+    //        eventualTeam
+    //      }))
+    //    }).map(_.toList)
 
     val teamMaster: Future[List[Team]] = teamShortNames1.map((tsn: Map[String, String]) => {
       tsn.keys.grouped(4).map((is: Iterable[String]) => {
@@ -113,7 +120,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     }).map(_.toMap)
   }
 
-  def loadAliasMap():Future[Map[String, String]] = {
+  def loadAliasMap(): Future[Map[String, String]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
     import play.modules.reactivemongo.json._
 
