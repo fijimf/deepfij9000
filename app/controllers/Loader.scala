@@ -6,7 +6,7 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
-import controllers.model.Team
+import controllers.model.{SocialData, LogoUrls, Colors, Team}
 import jdk.internal.org.objectweb.asm.tree.TableSwitchInsnNode
 import modules.scraping.{TeamDetail, ShortNameAndKeyByStatAndPage, ShortTeamByYearAndConference, ShortTeamAndConferenceByYear}
 import play.api.Logger
@@ -15,25 +15,69 @@ import play.api.libs.json.{JsString, JsObject, Json}
 import play.modules.reactivemongo.json.collection.JSONCollection
 import play.modules.reactivemongo.{ReactiveMongoComponents, MongoController, ReactiveMongoApi}
 import reactivemongo.api.ReadPreference
+import reactivemongo.api.collections.bson.BSONCollection
+import reactivemongo.api.commands.{MultiBulkWriteResult, WriteResult}
+import reactivemongo.bson.{Macros, BSONDocument, BSONHandler}
+import reactivemongo.core.protocol.Query
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiveMongoApi: ReactiveMongoApi)
                       (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
   val logger: Logger = Logger(this.getClass)
   implicit val timeout = Timeout(105.seconds)
 
-  def loadSingleTeam = Action {
-    val eventualTeam: Future[Team] = (teamLoad ? TeamDetail("georgetown", "Georgetown")).mapTo[Team]
-    val team = Await.result(eventualTeam, 300.seconds)
-    Ok(team.toString)
-  }
-
   def loadConferenceMaps = Action {
     val academicYears: List[Int] = List(2015)
     val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
-     val result: Map[Int, Map[String, List[String]]] = Await.result(confAlignmentByYear, 5.minutes)
-     Ok(result.toString)
+    val result: Map[Int, Map[String, List[String]]] = Await.result(confAlignmentByYear, 5.minutes)
+    Ok(result.toString)
+  }
+
+  def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
+    def collection: BSONCollection = db.collection[BSONCollection]("teams")
+    implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]
+    implicit val logoUrlsHandler: BSONHandler[BSONDocument, LogoUrls] = Macros.handler[LogoUrls]
+    implicit val socialDataHandler: BSONHandler[BSONDocument, SocialData] = Macros.handler[SocialData]
+    implicit val teamHandler: BSONHandler[BSONDocument, Team] = Macros.handler[Team]
+    val f: Unit => Future[MultiBulkWriteResult] = _ => collection.bulkInsert(teams.map(teamHandler.write).toStream, ordered = false)
+    collection.drop().flatMap(Unit => collection.bulkInsert(teams.map(teamHandler.write).toStream, ordered = false))
+  }
+
+  def loadTeams = Action.async {
+    logger.info("Loading preliminary team.")
+    val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
+    val aliasMap: Future[Map[String, String]] = loadAliasMap()
+
+    val teamShortNames1 = for (
+      tsn <- teamShortNames;
+      am <- aliasMap
+    ) yield {
+      logger.info("ALIAS MAP: " + am.keys.mkString(", "))
+      tsn.map((tup: (String, String)) => {
+        if (am.contains(tup._1)) {
+          am(tup._1) -> tup._2
+        } else {
+          tup
+        }
+      })
+    }
+
+    logger.info("Loading team detail")
+
+    val teamMaster: Future[List[Team]] = teamShortNames1.map((tsn: Map[String, String]) => {
+      tsn.keys.grouped(4).map((is: Iterable[String]) => {
+        Await.result(Future.sequence(is.map((k: String) => {
+          (teamLoad ? TeamDetail(k, tsn(k))).mapTo[Team]
+        })), 600.seconds)
+      }).flatten.toList
+    })
+    val futureWriteResult: Future[MultiBulkWriteResult] = teamMaster.flatMap(saveTeams(_))
+
+    futureWriteResult.map(wr => {
+      Ok(wr.toString)
+    })
   }
 
   def loadReferenceData = Action {

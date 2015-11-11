@@ -37,15 +37,15 @@ class MongoLoader @Inject()(val reactiveMongoApi: ReactiveMongoApi)
   }
 
   def saveTeam() = Action.async {
-
-    implicit val teamHandler: BSONHandler[BSONDocument, Team] = Macros.handler[Team]
     implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]
     implicit val logoUrlsHandler: BSONHandler[BSONDocument, LogoUrls] = Macros.handler[LogoUrls]
     implicit val socialDataHandler: BSONHandler[BSONDocument, SocialData] = Macros.handler[SocialData]
+    implicit val teamHandler: BSONHandler[BSONDocument, Team] = Macros.handler[Team]
+
     val team = Team("georgetown", "Georgetown", "Georgetown University", "Hoyas")
     val fwr: Future[WriteResult] = teams.insert(teamHandler.write(team))
     fwr.map(p => {
-      Ok(p.n)
+      Ok(p.toString)
     })
   }
 }
