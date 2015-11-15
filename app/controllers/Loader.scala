@@ -35,8 +35,10 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   def loadConferenceMaps = Action {
     import play.modules.reactivemongo.json._
 
+    val aliasMap: Future[Map[String, String]] = loadAliasMap()
+
     val academicYears: List[Int] = List(2012, 2013,2014,2015)
-    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
+    val confAlignmentByYear: Map[Int, Map[String, List[String]]] = academicYears.map(yr=> yr->Await.result(conferenceAlignmentByYear(yr),1.minute)).toMap
     val teamNameMap =
       db.collection[BSONCollection]("teams")
         .find[BSONDocument](BSONDocument())
@@ -44,16 +46,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
         .collect[List]()
         .map(p=> p.foldLeft(Map.empty[String, String])((map: Map[String, String], jso: JsObject) => map+(jso.value("name").as[String] -> jso.value("key").as[String])))
     val normalizedMap: Future[Map[Int, Map[String, List[String]]]] = for (
-      confMap <- confAlignmentByYear;
+      am<-aliasMap;
       teamNames <- teamNameMap
     ) yield {
-      confMap.mapValues(_.mapValues(_.map(s => {
-        teamNames.getOrElse(s, "***" + s)
+      confAlignmentByYear.mapValues(_.mapValues(_.flatMap(s => {
+        teamNames.get(s).orElse(am.get(s))
       })))
     }
-
-
-
 
  val result: Map[Int, Map[String, List[String]]] = Await.result(normalizedMap, 5.minutes)
 
@@ -102,6 +101,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
   def loadReferenceData = Action {
     logger.info("Loading preliminary team/conference data.")
+//    val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
     val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
     val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
     //    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
@@ -168,11 +168,23 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
       Future.sequence(academicYears.map(yr => {
         val confMap: Map[Int, String] = tcm.cm.data
         Future.sequence(confMap.keys.map(c => {
-          (teamLoad ? ShortTeamByYearAndConference(yr, c)).mapTo[TeamMap].map(_.data.values.toList).map(confMap.getOrElse(c, c.toString) -> _)
+          val future: Future[Any] = teamLoad ? ShortTeamByYearAndConference(yr, c)
+          future.mapTo[TeamMap].map(_.data.values.toList).map(confMap.getOrElse(c, c.toString) -> _)
         })).map(_.toMap).map(yr -> _)
       })).map(_.toMap)
     })
     confAlignmentByYear
+  }
+
+  def conferenceAlignmentByYear(yr: Int): Future[Map[String, List[String]]] = {
+    val masterTeamConference: Future[TeamConfMap] = (teamLoad ? ShortTeamAndConferenceByYear(yr)).mapTo[TeamConfMap]
+    masterTeamConference.flatMap(tcm => {
+      val confMap: Map[Int, String] = tcm.cm.data
+      Future.sequence(confMap.keys.map(c => {
+        val future = (teamLoad ? ShortTeamByYearAndConference(yr, c)).mapTo[TeamMap]
+        future.map(_.data.values.toList).map(confMap.getOrElse(c, c.toString) -> _)
+      })).map(_.toMap)
+    })
   }
 
   def masterShortName(pagination: List[Int], stat: Int): Future[Map[String, String]] = {

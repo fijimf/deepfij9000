@@ -7,7 +7,7 @@ trait NcaaOrgTeamScraper {
     (htmlNode \\ "li" \ "a").filter(_.attribute("href").flatMap(_.headOption).exists(_.text.startsWith("javascript:changeConference"))).map(n => {
       val id = n.attribute("href").flatMap(_.headOption).map(_.text.replace("javascript:changeConference(", "").replace(");", "").toDouble.toInt)
       id -> n.text
-    }).filter(_._1.isDefined).map((tup: (Option[Int], String)) => (tup._1.get, tup._2)).toMap
+    }).filter(_._1.isDefined).map((tup: (Option[Int], String)) => (tup._1.get, tup._2)).toMap.filterNot(_._2=="ALL TEAMS")
 
   }
 
