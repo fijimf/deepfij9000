@@ -39,6 +39,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val teamHandler: BSONHandler[BSONDocument, Team] = Macros.handler[Team]
   implicit val resultHandler: BSONHandler[BSONDocument, Result] = Macros.handler[Result]
   implicit val gameHandler: BSONHandler[BSONDocument, Game] = Macros.handler[Game]
+  implicit val conferenceMembershipHandler: BSONHandler[BSONDocument, ConferenceMembership] = Macros.handler[ConferenceMembership]
   implicit val seasonHandler: BSONHandler[BSONDocument, Season] = Macros.handler[Season]
 
   def loadConferenceMaps = Action.async {
@@ -68,13 +69,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     val seasons = normalizedMap.map(_.map(tup => {
       val year = tup._1
       val confToTeam = tup._2
-      val teamMap: Map[String, String] = confToTeam.flatMap((tup2: (String, List[String])) => {
+      val teamMap: List[ConferenceMembership] = confToTeam.flatMap((tup2: (String, List[String])) => {
         val confName: String = tup2._1
         val teamList: List[String] = tup2._2
         teamList.map((s: String) => {
-          s -> confName
+         ConferenceMembership(s, confName)
         })
-      })
+      }).toList
       Season(year, List.empty[Game], teamMap)
     }).toList)
 
@@ -136,62 +137,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     })
   }
 
-  def loadReferenceData = Action {
-    logger.info("Loading preliminary team/conference data.")
-    //    val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
-    val academicYears: List[Int] = List(2015, 2014, 2013, 2012)
-    val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
-    //    val confAlignmentByYear: Future[Map[Int, Map[String, List[String]]]] = conferenceAlignmentByYear(academicYears)
-    //    for (
-    //      tsn <- teamShortNames;
-    //      caby <- confAlignmentByYear
-    //    ) {
-    //      val fromCom: Set[String] = tsn.values.toSet
-    //      val fromOrg: Set[String] = caby.values.flatMap(_.values.flatten).toSet
-    //      val diff1: Set[String] = fromCom.diff(fromOrg)
-    //      val diff2: Set[String] = fromOrg.diff(fromCom)
-    //      logger.info("Teams known to com but not org: "+diff1.toString())
-    //      logger.info("Teams known to com but not org: "+diff2.toString())
-    //
-    //    }
-    val aliasMap: Future[Map[String, String]] = loadAliasMap()
-
-    val teamShortNames1 = for (
-      tsn <- teamShortNames;
-      am <- aliasMap
-    ) yield {
-      logger.info("ALIAS MAP: " + am.keys.mkString(", "))
-      tsn.map((tup: (String, String)) => {
-        if (am.contains(tup._1)) {
-          am(tup._1) -> tup._2
-        } else {
-          tup
-        }
-      })
-    }
-    logger.info("Loading team detail")
-
-
-    //    val teamMaster: Future[List[Team]] = teamShortNames.flatMap((tsn: Map[String, String]) => {
-    //      Future.sequence(tsn.keys.map(k => {
-    //        val eventualTeam: Future[Team] = (teamLoad ? TeamDetail( k, tsn(k))).mapTo[Team]
-    //        eventualTeam
-    //      }))
-    //    }).map(_.toList)
-
-    val teamMaster: Future[List[Team]] = teamShortNames1.map((tsn: Map[String, String]) => {
-      tsn.keys.grouped(4).map((is: Iterable[String]) => {
-        Await.result(Future.sequence(is.map((k: String) => {
-          (teamLoad ? TeamDetail(k, tsn(k))).mapTo[Team]
-        })), 600.seconds)
-      }).flatten.toList
-    })
-
-
-    val s = Await.result(teamMaster, 600.seconds)
-    //val r = Await.result(confAlignmentByYear, 300.seconds)
-    Ok(s.toString())
-  }
 
   def conferenceAlignmentByYear(academicYears: List[Int]): Future[Map[Int, Map[String, List[String]]]] = {
     val masterTeamConference: Future[TeamConfMap] = academicYears.foldLeft(Future.successful(TeamConfMap()))((f: Future[TeamConfMap], yr: Int) => {

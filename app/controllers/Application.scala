@@ -62,34 +62,6 @@ class Application @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
     Ok("Done" + r)
   }
 
-//  def createNcaaOrgScraper(years:List[Int]):Enumerator[TeamConfMap] = {
-//
-//    new Enumerator[TeamConfMap] {
-//      override def apply[List[Int]](i: Iteratee[TeamConfMap, List[Int]]): Future[Iteratee[TeamConfMap, List[Int]]] =  {
-//
-//          i.fold {
-//            case Step.Done(result, remaining) => Future(i)
-//            case Step.Cont(k: (Input[TeamConfMap] => Iteratee[TeamConfMap, List[Int]])) => {
-//              if (index < items.size) {
-//                val item = items(index)
-//                println(s"El($item)")
-//                index += 1
-//                val newIteratee = k(Input.El(item))
-//                apply(newIteratee)
-//              } else {
-//
-//                Future(k(Input.EOF))
-//              }
-//            }
-//
-//            // iteratee is in error state
-//            case Step.Error(message, input: Input[TeamConfMap]) => Future(i)
-//      }
-//
-//    }
-//  }
-
-
   def team = Action {
     Ok(views.html.teamView(Team(
       "georgetown",
