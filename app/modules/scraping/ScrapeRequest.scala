@@ -2,6 +2,7 @@ package modules.scraping
 
 import controllers.model.{SocialData, Colors, LogoUrls, Team}
 import controllers.{TeamMaster, ConferenceMap, TeamMap, TeamConfMap}
+import org.joda.time.LocalDate
 
 import scala.xml.Node
 
@@ -9,6 +10,11 @@ sealed trait ScrapeRequest[T] {
   def url: String
 
   def scrape(n: Node): T
+}
+
+case class ScoreboardByDate(date:LocalDate) extends ScrapeRequest[Scoreboard] with NcaaComGameScraper {
+  override def url = "http://data.ncaa.com/jsonp/scoreboard/basketball-men/d1/" + date.getYear + "/" + date.getMonthOfYear + "/" + date.getDayOfMonth + "/scoreboard.html"
+  override def scrape(n: Node) = Scoreboard()
 }
 
 case class ShortTeamAndConferenceByYear(y: Int) extends ScrapeRequest[TeamConfMap] with NcaaOrgTeamScraper {

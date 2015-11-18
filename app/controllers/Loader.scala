@@ -137,6 +137,9 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     })
   }
 
+  def loadGames = Action.async {
+
+  }
 
   def conferenceAlignmentByYear(academicYears: List[Int]): Future[Map[Int, Map[String, List[String]]]] = {
     val masterTeamConference: Future[TeamConfMap] = academicYears.foldLeft(Future.successful(TeamConfMap()))((f: Future[TeamConfMap], yr: Int) => {
