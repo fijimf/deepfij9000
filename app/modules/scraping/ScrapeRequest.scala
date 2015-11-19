@@ -1,8 +1,9 @@
 package modules.scraping
 
-import controllers.model.{SocialData, Colors, LogoUrls, Team}
+import controllers.model._
 import controllers.{TeamMaster, ConferenceMap, TeamMap, TeamConfMap}
 import org.joda.time.LocalDate
+import play.api.libs.json.JsValue
 
 import scala.xml.Node
 
@@ -12,9 +13,25 @@ sealed trait ScrapeRequest[T] {
   def scrape(n: Node): T
 }
 
-case class ScoreboardByDate(date:LocalDate) extends ScrapeRequest[Scoreboard] with NcaaComGameScraper {
+sealed trait JsonScrapeRequest[T] {
+  def url: String
+
+  def preProcessBody(s:String):String = s
+
+  def scrape(js:JsValue): T
+}
+
+case class Scoreboard(date:String, games:List[Game])
+
+
+case class ScoreboardByDate(date:LocalDate) extends JsonScrapeRequest[Scoreboard] with NcaaComGameScraper {
   override def url = "http://data.ncaa.com/jsonp/scoreboard/basketball-men/d1/" + date.getYear + "/" + date.getMonthOfYear + "/" + date.getDayOfMonth + "/scoreboard.html"
-  override def scrape(n: Node) = Scoreboard()
+  override def preProcessBody(s:String) = stripCallbackWrapper(s)
+  override def scrape(js:JsValue):Scoreboard = {
+
+
+    Scoreboard("",List.empty)
+  }
 }
 
 case class ShortTeamAndConferenceByYear(y: Int) extends ScrapeRequest[TeamConfMap] with NcaaOrgTeamScraper {

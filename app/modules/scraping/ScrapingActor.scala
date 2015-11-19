@@ -6,14 +6,15 @@ import akka.actor.Actor
 import com.google.inject.Inject
 import controllers.{TeamConfMap, TeamMap, TeamMaster, TeamMasterRec}
 import play.api.Logger
+import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 
 import scala.concurrent.{Future, ExecutionContext}
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 import scala.xml.Node
 
 class ScrapingActor @Inject()(ws: WSClient) extends Actor {
-  val logger: Logger = Logger(this.getClass())
+  val logger: Logger = Logger(this.getClass)
   implicit val ec = new ExecutionContext {
     val threadPool = Executors.newFixedThreadPool(36) // Limited so ncaa.com stops blocking me
 
@@ -26,9 +27,9 @@ class ScrapingActor @Inject()(ws: WSClient) extends Actor {
 
   override def receive: Receive = {
     case r:ScrapeRequest[_] =>
-
         handleScrape(r)
-
+    case r:JsonScrapeRequest[_] =>
+        handleJsonScrape(r)
     case _ =>
       println("Unexpected message")
   }
@@ -55,4 +56,29 @@ class ScrapingActor @Inject()(ws: WSClient) extends Actor {
         sender ! "Failed with exception " + ex.getMessage
     }
   }
+
+
+def handleJsonScrape(r: JsonScrapeRequest[_]): Unit = {
+    val mySender = sender()
+    logger.info("Requesting " + r.url)
+    ws.url(r.url).get().onComplete {
+      case Success(response) =>
+        if (response.status == 200) {
+          logger.info("%d - %s (%d bytes)".format(response.status, response.statusText, response.body.length))
+        } else {
+          logger.warn("%d - %s (%s )".format(response.status, response.statusText, r.url))
+        }
+        Try {Json.parse(r.preProcessBody(response.body))} match {
+          case Success(js) =>
+            mySender ! r.scrape(js)
+          case Failure(ex) =>
+            logger.error("Error parsing response:\n" + response.body, ex)
+            sender ! "Failed with exception " + ex.getMessage
+        }
+      case Failure(ex) =>
+        logger.error("Get failed", ex)
+        sender ! "Failed with exception " + ex.getMessage
+    }
+  }
 }
+

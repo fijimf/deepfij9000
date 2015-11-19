@@ -1,7 +1,9 @@
 package modules.scraping
 
+import play.api.libs.json.JsValue
 
- trait NcaaComGameScraper {
+
+trait NcaaComGameScraper {
 
 
 

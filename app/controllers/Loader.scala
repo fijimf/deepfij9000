@@ -7,9 +7,8 @@ import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
 import controllers.model._
-import jdk.internal.org.objectweb.asm.tree.TableSwitchInsnNode
-import modules.scraping.{TeamDetail, ShortNameAndKeyByStatAndPage, ShortTeamByYearAndConference, ShortTeamAndConferenceByYear}
-import org.joda.time.LocalDateTime
+import modules.scraping._
+import org.joda.time.{LocalDate, LocalDateTime}
 import play.api.Logger
 import play.api.mvc.{Action, Controller}
 import play.api.libs.json.{JsString, JsObject, Json}
@@ -31,8 +30,10 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDateTime] {
     def read(time: BSONDateTime) = new LocalDateTime(time.value)
+
     def write(jdtime: LocalDateTime) = BSONDateTime(jdtime.toDate.getTime)
   }
+
   implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]
   implicit val logoUrlsHandler: BSONHandler[BSONDocument, LogoUrls] = Macros.handler[LogoUrls]
   implicit val socialDataHandler: BSONHandler[BSONDocument, SocialData] = Macros.handler[SocialData]
@@ -73,7 +74,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
         val confName: String = tup2._1
         val teamList: List[String] = tup2._2
         teamList.map((s: String) => {
-         ConferenceMembership(s, confName)
+          ConferenceMembership(s, confName)
         })
       }).toList
       Season(year, List.empty[Game], teamMap)
@@ -85,7 +86,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
   }
 
-  def aacToBigEastHack(confMap: Map[String, List[String]]): Map[String,  List[String]] = {
+  def aacToBigEastHack(confMap: Map[String, List[String]]): Map[String, List[String]] = {
     confMap.get("Big East") match {
       case Some(c) => confMap
       case None =>
@@ -137,8 +138,27 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     })
   }
 
-  def loadGames = Action.async {
+  object DateIterator {
+    def apply(s: LocalDate, e: LocalDate): Iterator[LocalDate] = new Iterator[LocalDate] {
+      var d = s
 
+      override def hasNext: Boolean = d.isBefore(e)
+
+      override def next(): LocalDate = d.plusDays(1)
+    }
+  }
+
+  def loadGames = Action.async {
+    val years = List(2015)
+    Future.sequence(
+      years.flatMap(y => {
+        DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).map(d => {
+          (teamLoad ? ScoreboardByDate(d)).mapTo[Scoreboard]
+        })
+      })
+    ).map(s => {
+      Ok(s.toString)
+    })
   }
 
   def conferenceAlignmentByYear(academicYears: List[Int]): Future[Map[Int, Map[String, List[String]]]] = {
