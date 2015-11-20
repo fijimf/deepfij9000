@@ -58,12 +58,10 @@ trait NcaaComGameScraper {
   }
 
   def pullKeyFromLink(s:String):Option[String] = {
-    val opt: Option[String] = HTML.loadString(s) match {
-      case Success(n: Node) => logger.info(n.toString())
-        (n\"a").flatMap(_.headOption).flatMap(_.attribute("href")).flatMap(_.headOption).map(_.text).headOption
-      case Failure(e) =>
-        logger.error(e.getMessage)
-        None
+    val regex = """'/schools/(\S+)'""".r.unanchored
+    val opt = s match {
+      case regex(key) => Some(key)
+      case _=> None
     }
     logger.info(s+"==> "+opt)
     opt
