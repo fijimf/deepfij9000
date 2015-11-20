@@ -20,7 +20,6 @@ trait NcaaComGameScraper {
   }
 
   def getGameData(v: JsValue): Option[GameData] = {
-    logger.info("PARSING ==>>"+Json.prettyPrint(v))
     val optResult = for (
       gs <- (v \ "gameState").asOpt[String] if gs.equalsIgnoreCase("final");
       ps <- (v \ "scoreBreakdown").asOpt[JsArray];
@@ -39,16 +38,10 @@ trait NcaaComGameScraper {
       TourneyInfo(rg, hs.toInt, as.toInt)
     }
 
-    val maybeString: Option[String] = (v \ "startDate").asOpt[String]
-    val maybeString1: Option[String] = (v \ "conference").asOpt[String];
-    val maybeString2: Option[String] = (v \ "home" \ "name").asOpt[String];
-    logger.info("xxx=>"+maybeString)
-    logger.info("xxx=>"+maybeString1)
-    logger.info("xxx=>"+maybeString2)
     for (
-      sd <- maybeString;
-      cn <- maybeString1;
-       ht <- maybeString2;
+      sd <- (v \ "startDate").asOpt[String];
+      cn <- (v \ "conference").asOpt[String];
+       ht <- (v \ "home" \ "name").asOpt[String];
       hk <- pullKeyFromLink(ht);
       at <- (v \ "away" \ "name").asOpt[String];
       ak<- pullKeyFromLink(at)
@@ -59,12 +52,10 @@ trait NcaaComGameScraper {
 
   def pullKeyFromLink(s:String):Option[String] = {
     val regex = """'/schools/(\S+)'""".r.unanchored
-    val opt = s match {
+    s match {
       case regex(key) => Some(key)
-      case _=> None
+      case _ => None
     }
-    logger.info(s+"==> "+opt)
-    opt
   }
 
   def stripCallbackWrapper(json: String): String = {
