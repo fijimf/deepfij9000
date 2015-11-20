@@ -144,7 +144,10 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
       override def hasNext: Boolean = d.isBefore(e)
 
-      override def next(): LocalDate = d.plusDays(1)
+      override def next(): LocalDate ={
+        d=d.plusDays(1)
+        d
+      }
     }
   }
 
