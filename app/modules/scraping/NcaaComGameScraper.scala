@@ -1,79 +1,60 @@
 package modules.scraping
 
-import play.api.libs.json.JsValue
+import controllers.model.{GameData, Result, TourneyInfo}
+import org.joda.time.LocalDate
+import play.api.Logger
+import play.api.libs.json._
 
+import scala.util.{Failure, Success, Try}
+import scala.xml.Node
 
 trait NcaaComGameScraper {
+  val logger: Logger = Logger(this.getClass)
 
+  def getGames(v: JsValue): Try[JsArray] = ((v \ "scoreboard") (0) \ "games").validate[JsArray] match {
+    case JsSuccess(value, _) => Success(value)
+    case e: JsError =>
+      val message: String = "Errors: " + JsError.toJson(e).toString()
+      logger.error(message)
+      Failure(new IllegalArgumentException(message))
+  }
 
+  def getGameData(v: JsValue): Option[GameData] = {
+    val optResult = for (
+      gs <- (v \ "gameState").asOpt[String] if gs.equalsIgnoreCase("final");
+      ps <- (v \ "scoreBreakdown").asOpt[JsArray];
+      hs <- (v \ "home" \ "currentScore").asOpt[String];
+      as <- (v \ "away" \ "currentScore").asOpt[String]
+    ) yield {
+      Result(hs.toInt, as.toInt, ps.value.size)
+    }
 
-  def ripJson[T](json: String, f: (JsValue => T)): List[T] = {
-    if (StringUtils.isBlank(json)) {
-      List.empty
-    } else {
-      try {
-        val parse: JsValue = Json.parse(stripCallbackWrapper(json))
-        val games = ((parse \ "scoreboard")(0) \ "games").validate[JsArray] match {
-          case JsSuccess(g, _) => g.asInstanceOf[JsArray].value.toList
-          case _ => {
-            logger.error("Error parsing Json")
-            List.empty
-          }
-        }
-        games.map(f)
-      } catch {
-        case t: Throwable => {
-          logger.error("Error parsing Json", t)
-          // logger.error(json)
-          List.empty
-        }
-      }
+    val optTourneyInfo = for (
+      ti <- (v \ "tournament_d").asOpt[String];
+      rg <- (v \ "bracket_region").asOpt[String];
+      hs <- (v \ "home" \ "team_seed").asOpt[String];
+      as <- (v \ "away" \ "team_seed").asOpt[String]
+    ) yield {
+      TourneyInfo(rg, hs.toInt, as.toInt)
+    }
+
+    for (
+      sd <- (v \ "startDate").asOpt[String];
+      cn <- (v \ "conference").asOpt[String];
+      ht <- (v \ "home" \ "name").asOpt[String];
+      hk <- pullKeyFromLink(ht);
+      at <- (v \ "away" \ "name").asOpt[String];
+      ak<- pullKeyFromLink(at)
+    ) yield {
+      GameData(new LocalDate(sd), hk, ak, optResult, (v \ "location").asOpt[String], optTourneyInfo, cn)
     }
   }
 
-  def ripGames(json: String, date: LocalDate): List[ResultData] = {
-    ripJson(json, ripGameResult).flatten.map(tup => ResultData(GameData(date, tup._1, tup._2), tup._3))
-  }
-
-  val ripTwitters: ((String, JsValue) => Option[(String, String)]) = {
-    case (ha, j) =>
-      val t = (j \ ha \ "nameSeo").asOpt[String]
-      val bb = (j \ ha \ "social" \ "twitter" \ "accounts" \ "sport").asOpt[String]
-      val ad = (j \ ha \ "social" \ "twitter" \ "accounts" \ "athleticDept").asOpt[String]
-      val cf = (j \ ha \ "social" \ "twitter" \ "accounts" \ "conference").asOpt[String]
-      (t, bb.orElse(ad).orElse(cf)) match {
-        case (Some(team), Some(twitter)) => Some(team -> twitter)
-        case _ => None
-      }
-  }
-
-  def ripTwitterMap(json: String): Map[String, String] = {
-    (ripJson(json, ripTwitters("home", _)).flatten ++ ripJson(json, ripTwitters("away", _)).flatten).toMap
-  }
-
-  def ripColors(json: String): Map[String, String] = {
-    Map.empty[String, String]
-  }
-
-  val ripGameResult: (JsValue => Option[(String, String, Option[(Int, Int)])]) = {
-    j =>
-      val result = (
-        teamData(j, "home", "currentScore").flatMap(x => catching(classOf[NumberFormatException]) opt x.toInt),
-        teamData(j, "away", "currentScore").flatMap(x => catching(classOf[NumberFormatException]) opt x.toInt)
-        ) match {
-        case (Some(h), Some(a)) => Some(h.asInstanceOf[Int], a.asInstanceOf[Int])
-        case _ => None
-      }
-
-      val teams = (teamData(j, "home", "nameSeo"), teamData(j, "away", "nameSeo")) match {
-        case (Some(h), Some(a)) => Some(h.toString, a.toString, result)
-        case _ => None
-      }
-      teams
-  }
-
-  def teamData(game: JsValue, homeOrAway: String, item: String): Option[String] = {
-    (game \ homeOrAway \ item).asOpt[String]
+  def pullKeyFromLink(s:String):Option[String] = {
+    HTML.loadString(s) match {
+      case Success(n:Node) => n.attribute("href").flatMap(_.headOption).map(_.text)
+      case Failure(e)=> None
+    }
   }
 
   def stripCallbackWrapper(json: String): String = {
@@ -83,3 +64,8 @@ trait NcaaComGameScraper {
       .replaceAll( """,\s+,""", ", ")
   }
 }
+
+
+
+
+

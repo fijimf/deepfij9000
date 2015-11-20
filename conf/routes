@@ -5,9 +5,8 @@
 # Home page
 GET     /                         controllers.Application.index
 GET     /other                    controllers.Application.other
-GET     /team                     controllers.Application.team
-GET     /scrape                   controllers.Loader.loadReferenceData
 GET     /scrapec                  controllers.Loader.loadConferenceMaps
+GET     /scrapegg                 controllers.Loader.loadGames
 GET     /scrapett                 controllers.Loader.loadTeams
 GET     /scrapet                  controllers.MongoLoader.saveTeam()
 GET     /aliases/:key             controllers.MongoLoader.findByAlias(key)

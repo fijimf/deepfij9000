@@ -1,9 +1,8 @@
+package modules.scraping
 
-case class GameData(date: LocalDate, time: LocalDateTime, homeTeamKey: String, awayTeamKey: String, result: Option[Result], location: Option[String], tourneyInfo: Option[TourneyInfo], confInfo: String)
+import controllers.model.GameData
+import org.joda.time.LocalDate
 
-case class Result(homeScore: Int, awayScore: Int, periods: Int)
-
-case class TourneyInfo(region: String, homeTeamSeed: Int, awayTeamSeed: Int)
 
 object ConferenceTourneySolver {
   def apply(games: List[GameData]): List[(GameData, Boolean)] = {
@@ -14,7 +13,7 @@ object ConferenceTourneySolver {
           g.confInfo.split(" ").toList.filterNot(_.equals("all-conf")) match {
             case conf :: Nil =>
               val key = (g.date, g.location, conf)
-              counts + (key -> counts.getOrElse(key, 0) + 1)
+              counts + (key -> (counts.getOrElse(key, 0) + 1))
             case _ => counts
           }
         case Some(_) => counts

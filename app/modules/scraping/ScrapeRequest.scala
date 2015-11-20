@@ -5,6 +5,7 @@ import controllers.{TeamMaster, ConferenceMap, TeamMap, TeamConfMap}
 import org.joda.time.LocalDate
 import play.api.libs.json.JsValue
 
+import scala.util.{Failure, Success}
 import scala.xml.Node
 
 sealed trait ScrapeRequest[T] {
@@ -21,16 +22,19 @@ sealed trait JsonScrapeRequest[T] {
   def scrape(js:JsValue): T
 }
 
-case class Scoreboard(date:String, games:List[Game])
 
 
-case class ScoreboardByDate(date:LocalDate) extends JsonScrapeRequest[Scoreboard] with NcaaComGameScraper {
+case class ScoreboardByDate(date:LocalDate) extends JsonScrapeRequest[List[GameData]] with NcaaComGameScraper {
   override def url = "http://data.ncaa.com/jsonp/scoreboard/basketball-men/d1/" + date.getYear + "/" + date.getMonthOfYear + "/" + date.getDayOfMonth + "/scoreboard.html"
   override def preProcessBody(s:String) = stripCallbackWrapper(s)
-  override def scrape(js:JsValue):Scoreboard = {
-
-
-    Scoreboard("",List.empty)
+  override def scrape(js:JsValue):List[GameData] = {
+    getGames(js) match {
+      case Success(jsa) =>
+        jsa.value.toList.flatMap(getGameData)
+      case Failure(ex) =>
+        logger.error("Failed scraping data ", ex)
+        List.empty
+    }
   }
 }
 

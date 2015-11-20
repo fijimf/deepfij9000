@@ -152,8 +152,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     val years = List(2015)
     Future.sequence(
       years.flatMap(y => {
-        DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).map(d => {
-          (teamLoad ? ScoreboardByDate(d)).mapTo[Scoreboard]
+        DateIterator(new LocalDate(y, 11, 15), new LocalDate(y , 11, 20)).map(d => {
+          (teamLoad ? ScoreboardByDate(d)).mapTo[List[GameData]]
         })
       })
     ).map(s => {

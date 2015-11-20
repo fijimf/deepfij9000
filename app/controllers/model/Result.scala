@@ -1,3 +1,3 @@
 package controllers.model
 
-case class Result(homeScore:Int, awayScore:Int, overtimePeriods:Int=0)
+case class Result(homeScore: Int, awayScore: Int, periods: Int)
