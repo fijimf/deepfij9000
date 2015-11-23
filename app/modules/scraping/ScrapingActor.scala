@@ -72,7 +72,7 @@ def handleJsonScrape(r: JsonScrapeRequest[_]): Unit = {
           case Success(js) =>
             mySender ! r.scrape(js)
           case Failure(ex) =>
-            logger.error("Error parsing response:\n" + response.body, ex)
+            logger.error("Error parsing response:\n" + ex.getMessage+" "+response.body )
             sender ! "Failed with exception " + ex.getMessage
         }
       case Failure(ex) =>

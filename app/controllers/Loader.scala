@@ -144,24 +144,40 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
       override def hasNext: Boolean = d.isBefore(e)
 
-      override def next(): LocalDate ={
-        d=d.plusDays(1)
+      override def next(): LocalDate = {
+        d = d.plusDays(1)
         d
       }
     }
   }
 
-  def loadGames = Action.async {
+  def loadGames = Action {
     val years = List(2015)
-    Future.sequence(
-      years.flatMap(y => {
-        DateIterator(new LocalDate(y, 11, 13), new LocalDate(y , 11, 20)).map(d => {
-          (teamLoad ? ScoreboardByDate(d)).mapTo[List[GameData]]
-        })
-      })
-    ).map(s => {
-      Ok(s.toString)
-    })
+    val gameData: List[GameData] = years.flatMap(y => {
+      DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).grouped(10).map(ds => {
+        getGameData(ds)
+      }).flatten
+    }).flatten
+
+    Ok(gameData.mkString("\n"))
+  }
+
+  def getGameData(dates: Seq[LocalDate]): Seq[List[GameData]] = {
+    Await.result(Future.sequence(dates.map(scrapeOneDay)), 2.minutes)
+  }
+
+  def scrapeOneDay: (LocalDate) => Future[List[GameData]] = {
+    d => {
+      (teamLoad ? ScoreboardByDate(d)).map {
+        case lst: List[GameData] =>
+          logger.info("For date " + d + ", " + lst.size + " game candidates found")
+          lst
+        case errMsg: String => logger.info("For date " + d + ", " + errMsg)
+          List.empty[GameData]
+        case _ => logger.info("For date " + d + ", unexpected response from scraper.")
+          List.empty[GameData]
+      }
+    }
   }
 
   def conferenceAlignmentByYear(academicYears: List[Int]): Future[Map[Int, Map[String, List[String]]]] = {

@@ -6,7 +6,7 @@ import play.api.Logger
 import play.api.libs.json._
 
 import scala.util.{Failure, Success, Try}
-import scala.xml.Node
+
 
 trait NcaaComGameScraper {
   val logger: Logger = Logger(this.getClass)
