@@ -3,12 +3,12 @@ package controllers.model
 import org.joda.time.LocalDateTime
 
 object Game {
-  def fromGameData(gd:GameData):Game = {
-    
+  def fromGameData(gd:GameData, isConfTourn:Boolean, isNeutral:Boolean):Game = {
+    Game(gd.date, gd.homeTeamKey, gd.awayTeamKey, gd.result, isNeutral, isConfTournament, gd.tourneyInfo, gd.location )
   }
 }
 
-case class Game(date: LocalDate, homeTeamKey: String, awayTeamKey: String, result: Option[Result], isNeutral: Boolean = false, isConfTournament: Option[Boolean], ncaaTourneyInfo:Option[TourneyInfo], location:Option[String], periods:Int) {
+case class Game(date: LocalDate, homeTeamKey: String, awayTeamKey: String, result: Option[Result], isNeutral: Boolean = false, isConfTournament: Boolean, ncaaTourneyInfo:Option[TourneyInfo], location:Option[String]) {
   def opponent(team:String) =  team match {
     case `homeTeamKey` => Some(awayTeamKey)
     case `awayTeamKey` => Some(homeTeamKey)
