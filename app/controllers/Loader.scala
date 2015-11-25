@@ -158,8 +158,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
         getGameData(ds)
       }).flatten
     }).flatten
-
-    Ok(gameData.mkString("\n"))
+    val enrichedGameData: List[(GameData, Boolean, Boolean)] = NeutralSiteSolver(ConferenceTourneySolver(gameData))
+    Ok(enrichedGameData.mkString("\n"))
   }
 
   def getGameData(dates: Seq[LocalDate]): Seq[List[GameData]] = {
