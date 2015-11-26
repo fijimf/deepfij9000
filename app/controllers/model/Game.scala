@@ -1,10 +1,10 @@
 package controllers.model
 
-import org.joda.time.LocalDateTime
+import org.joda.time.{LocalDate, LocalDateTime}
 
 object Game {
   def fromGameData(gd:GameData, isConfTourn:Boolean, isNeutral:Boolean):Game = {
-    Game(gd.date, gd.homeTeamKey, gd.awayTeamKey, gd.result, isNeutral, isConfTournament, gd.tourneyInfo, gd.location )
+    Game(gd.date, gd.homeTeamKey, gd.awayTeamKey, gd.result, isNeutral, isConfTourn, gd.tourneyInfo, gd.location )
   }
 }
 
@@ -15,7 +15,7 @@ case class Game(date: LocalDate, homeTeamKey: String, awayTeamKey: String, resul
     case _ => None
   }
 
-  def score(team: Team): Option[Int] = result.flatMap(res => team match {
+  def score(team: String): Option[Int] = result.flatMap(res => team match {
     case `homeTeamKey` => Some(res.homeScore)
     case `awayTeamKey` => Some(res.awayScore)
     case _ => None

@@ -8,30 +8,29 @@ import akka.util.Timeout
 import com.google.inject.name.Named
 import controllers.model._
 import modules.scraping._
-import org.joda.time.{LocalDate, LocalDateTime}
+import org.joda.time.LocalDate
 import play.api.Logger
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.{Action, Controller}
-import play.api.libs.json.{JsString, JsObject, Json}
 import play.modules.reactivemongo.json.collection.JSONCollection
-import play.modules.reactivemongo.{ReactiveMongoComponents, MongoController, ReactiveMongoApi}
-import reactivemongo.api.{Cursor, ReadPreference}
+import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
+import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.{MultiBulkWriteResult, WriteResult}
-import reactivemongo.bson.{BSONDateTime, Macros, BSONDocument, BSONHandler}
-import reactivemongo.core.protocol.Query
+import reactivemongo.api.commands.MultiBulkWriteResult
+import reactivemongo.bson._
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiveMongoApi: ReactiveMongoApi)
                       (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
   val logger: Logger = Logger(this.getClass)
   implicit val globalTimeout = Timeout(2.minutes)
 
-  implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDateTime] {
-    def read(time: BSONDateTime) = new LocalDateTime(time.value)
+  implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
+    def read(time: BSONDateTime) = new LocalDate(time.value)
 
-    def write(jdtime: LocalDateTime) = BSONDateTime(jdtime.toDate.getTime)
+    def write(jdtime: LocalDate) = BSONDateTime(jdtime.toDate.getTime)
   }
 
   implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]
@@ -39,10 +38,11 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val socialDataHandler: BSONHandler[BSONDocument, SocialData] = Macros.handler[SocialData]
   implicit val teamHandler: BSONHandler[BSONDocument, Team] = Macros.handler[Team]
   implicit val resultHandler: BSONHandler[BSONDocument, Result] = Macros.handler[Result]
+  implicit val tourneyInfoHandler: BSONHandler[BSONDocument, TourneyInfo] = Macros.handler[TourneyInfo]
   implicit val gameHandler: BSONHandler[BSONDocument, Game] = Macros.handler[Game]
   implicit val conferenceMembershipHandler: BSONHandler[BSONDocument, ConferenceMembership] = Macros.handler[ConferenceMembership]
   implicit val seasonHandler: BSONHandler[BSONDocument, Season] = Macros.handler[Season]
-
+  implicit val reader: BSONDocumentReader[Team] = Macros.reader[Team]
   def loadConferenceMaps = Action.async {
     import play.modules.reactivemongo.json._
 
@@ -55,10 +55,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
     val teamNameMap =
       db.collection[BSONCollection]("teams")
-        .find[BSONDocument](BSONDocument())
-        .cursor()
-        .collect[List]()
-        .map(p => p.foldLeft(Map.empty[String, String])((map: Map[String, String], jso: JsObject) => map + (jso.value("name").as[String] -> jso.value("key").as[String])))
+        .find(BSONDocument()).cursor[Team].collect[List]()
+        .map(p => p.foldLeft(Map.empty[String, String])((map: Map[String, String], team: Team) => map + (team.name -> team.key)))
     val normalizedMap: Future[Map[Int, Map[String, List[String]]]] = for (
       am <- aliasMap;
       teamNames <- teamNameMap
@@ -151,16 +149,25 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     }
   }
 
-  def loadGames = Action {
+  def loadGames = Action.async {
     val years = List(2015)
     val gameData: List[GameData] = years.flatMap(y => {
       DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).grouped(10).map(ds => {
         getGameData(ds)
       }).flatten
     }).flatten
+
     val enrichedGameData: List[(GameData, Boolean, Boolean)] = NeutralSiteSolver(ConferenceTourneySolver(gameData))
-    Ok(enrichedGameData.mkString("\n"))
-  }
+    loadTeamsFromDb().map(tl=>{
+      val keySet: Set[String] = tl.map(_.key).toSet
+      logger.info("TeamKeys: "+keySet.size)
+      val kept = enrichedGameData.filter(gd=>keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey))
+      val skipped = enrichedGameData.filterNot(gd=>keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey))
+      logger.info(skipped.map(egd=>egd._1.homeTeamKey+"|"+egd._1.awayTeamKey).mkString("\n"))
+      Ok(kept.mkString("\n"))
+    })
+
+}
 
   def getGameData(dates: Seq[LocalDate]): Seq[List[GameData]] = {
     Await.result(Future.sequence(dates.map(scrapeOneDay)), 2.minutes)
@@ -231,5 +238,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
         a -> k
       }).toMap
     })
+  }
+  def loadTeamsFromDb(): Future[List[Team]] = {
+    import play.modules.reactivemongo.json._
+
+
+    val teamCollection = db.collection[BSONCollection]("teams")
+    teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().mapTo[List[Team]]
+
   }
 }

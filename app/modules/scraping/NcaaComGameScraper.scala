@@ -41,16 +41,16 @@ trait NcaaComGameScraper {
     for (
       sd <- (v \ "startDate").asOpt[String];
       cn <- (v \ "conference").asOpt[String];
-       ht <- (v \ "home" \ "name").asOpt[String];
+      ht <- (v \ "home" \ "name").asOpt[String];
       hk <- pullKeyFromLink(ht);
       at <- (v \ "away" \ "name").asOpt[String];
-      ak<- pullKeyFromLink(at)
+      ak <- pullKeyFromLink(at)
     ) yield {
       GameData(new LocalDate(sd), hk, ak, optResult, (v \ "location").asOpt[String], optTourneyInfo, cn)
     }
   }
 
-  def pullKeyFromLink(s:String):Option[String] = {
+  def pullKeyFromLink(s: String): Option[String] = {
     val regex = """'/schools/(\S+)'""".r.unanchored
     s match {
       case regex(key) => Some(key)
