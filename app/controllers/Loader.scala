@@ -16,7 +16,7 @@ import play.modules.reactivemongo.json.collection.JSONCollection
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.MultiBulkWriteResult
+import reactivemongo.api.commands.{UpdateWriteResult, MultiBulkWriteResult}
 import reactivemongo.bson._
 
 import scala.concurrent.duration._
@@ -26,7 +26,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
                       (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
   val logger: Logger = Logger(this.getClass)
   implicit val globalTimeout = Timeout(2.minutes)
-
+  val academicYears: List[Int] = List(2012, 2013, 2014, 2015, 2016)
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
     def read(time: BSONDateTime) = new LocalDate(time.value)
 
@@ -43,12 +43,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val conferenceMembershipHandler: BSONHandler[BSONDocument, ConferenceMembership] = Macros.handler[ConferenceMembership]
   implicit val seasonHandler: BSONHandler[BSONDocument, Season] = Macros.handler[Season]
   implicit val reader: BSONDocumentReader[Team] = Macros.reader[Team]
+
   def loadConferenceMaps = Action.async {
     import play.modules.reactivemongo.json._
 
     val aliasMap: Future[Map[String, String]] = loadAliasMap()
 
-    val academicYears: List[Int] = List(2012, 2013, 2014, 2015, 2016)
+
     val confAlignmentByYear: Map[Int, Map[String, List[String]]] = academicYears.map(yr => {
       yr -> aacToBigEastHack(Await.result(conferenceAlignmentByYear(yr), 1.minute))
     }).toMap
@@ -98,10 +99,11 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     collection.drop().flatMap(Unit => collection.bulkInsert(seasons.map(seasonHandler.write).toStream, ordered = false))
   }
 
-  def updateSeasonGames(data:Map[Int,List[Game]]): Future[MultiBulkWriteResult] = {
+  def updateSeasonGames(academicYear: Int, games: List[Game]): Future[UpdateWriteResult] = {
     def collection: BSONCollection = db.collection[BSONCollection]("seasons")
-
-    collection.drop().flatMap(Unit => collection.bulkInsert(seasons.map(seasonHandler.write).toStream, ordered = false))
+    val sel = BSONDocument("academicYear" -> academicYear)
+    val upd = BSONDocument("games" -> games)
+    collection.update(sel, upd, upsert = true)
   }
 
   def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
@@ -156,65 +158,68 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def loadGames = Action.async {
-    loadTeamsFromDb().flatMap(tl=>{
-      loadAliasMap().map(am=>{
-      val keySet: Set[String] = tl.map(_.key).toSet
-      val years = List(2015)
-      val gameData: List[GameData] = years.flatMap(y => {
-        DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).grouped(10).map(ds => {
-          getGameData(ds)
-        }).flatten
-      }).flatten
+    loadTeamsFromDb().flatMap(tl => {
+      loadAliasMap().flatMap(am => {
+        val keySet: Set[String] = tl.map(_.key).toSet
 
-        logger.info("Aliases:\n"+am.mkString("\n"))
-      val normalizedGameData = gameData.map(gd=> {
-        if (!keySet.contains(gd.homeTeamKey)) {
-          am.get(gd.homeTeamKey) match {
-            case Some(teamKey) => gd.copy(homeTeamKey = teamKey)
-            case None => gd
-          }
-        } else {
-          gd
-        }
-      }).map(gd=> {
-        if (!keySet.contains(gd.awayTeamKey)) {
-          am.get(gd.awayTeamKey) match {
-            case Some(teamKey) => gd.copy(awayTeamKey = teamKey)
-            case None => gd
-          }
-        } else {
-          gd
-        }
-      })
+        val gameData: Map[Int, List[GameData]] = academicYears.map(y => y -> {
+          DateIterator(new LocalDate(y-1, 11, 1), new LocalDate(y, 4, 30)).grouped(10).map(ds => {
+            getGameData(ds).flatten
+          }).flatten
+        }.toList).toMap
 
-      val missingTeams: Map[String, Int] = normalizedGameData.foldLeft(Map.empty[String, Int])((counts: Map[String, Int], gd: GameData) => {
-        def countKey(ss: String, d: Map[String, Int]): Map[String, Int] = {
-          if (keySet.contains(ss)) {
-            d
+        logger.info("Aliases:\n" + am.mkString("\n"))
+        val normalizedGameData = gameData.mapValues(_.map(gd => {
+          if (!keySet.contains(gd.homeTeamKey)) {
+            am.get(gd.homeTeamKey) match {
+              case Some(teamKey) => gd.copy(homeTeamKey = teamKey)
+              case None => gd
+            }
           } else {
-            d + (ss -> (d.getOrElse(ss, 0) + 1))
+            gd
           }
-        }
-        countKey(gd.awayTeamKey, countKey(gd.homeTeamKey, counts))
+        }).map(gd => {
+          if (!keySet.contains(gd.awayTeamKey)) {
+            am.get(gd.awayTeamKey) match {
+              case Some(teamKey) => gd.copy(awayTeamKey = teamKey)
+              case None => gd
+            }
+          } else {
+            gd
+          }
+        }))
 
-      })
-      logger.info("The following teams (seen twice or more) are unknown:\n"+missingTeams.toList.filter(_._2>2).sortBy(-_._2).mkString("\n"))
-      val enrichedGameData: List[(GameData, Boolean, Boolean)] = NeutralSiteSolver(ConferenceTourneySolver(normalizedGameData))
-   
-     
-      
-      val kept = enrichedGameData.filter(gd=>keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey))
-      val skipped = enrichedGameData.filterNot(gd=>keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey))
-      logger.info(skipped.map(egd=>egd._1.homeTeamKey+"|"+egd._1.awayTeamKey).mkString("\n"))
-        val map: List[Game] = kept.map(gd=>Game.fromGameData(gd._1, gd._2, gd._3))
-      Ok(kept.mkString("\n"))
+        normalizedGameData.keys.foreach(k => {
+          val missingTeams: Map[String, Int] = normalizedGameData(k).foldLeft(Map.empty[String, Int])((counts: Map[String, Int], gd: GameData) => {
+            def countKey(ss: String, d: Map[String, Int]): Map[String, Int] = {
+              if (keySet.contains(ss)) {
+                d
+              } else {
+                d + (ss -> (d.getOrElse(ss, 0) + 1))
+              }
+            }
+            countKey(gd.awayTeamKey, countKey(gd.homeTeamKey, counts))
+          })
+          logger.info("The following teams (seen twice or more) are unknown:\n" + missingTeams.toList.filter(_._2 > 2).sortBy(-_._2).mkString("\n"))
+        })
+        val enrichedGameData: Map[Int, List[(GameData, Boolean, Boolean)]] = normalizedGameData.mapValues(ngd => NeutralSiteSolver(ConferenceTourneySolver(ngd)))
+
+
+
+        val kept = enrichedGameData.mapValues(_.filter(gd => keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey)))
+
+        val response: Future[String] = Future.sequence(kept.keys.map(k => {
+          val games = kept(k).map(gd => Game.fromGameData(gd._1, gd._2, gd._3))
+          updateSeasonGames(k, games)
+        })).map(_.map(_.toString).mkString("\n"))
+        response.map(s => Ok(s))
       })
     })
 
-}
+  }
 
   def getGameData(dates: Seq[LocalDate]): Seq[List[GameData]] = {
-    Await.result(Future.sequence(dates.map(scrapeOneDay)), 2.minutes)
+    Await.result(Future.sequence(dates.map(scrapeOneDay)), 6.minutes)
   }
 
   def scrapeOneDay: (LocalDate) => Future[List[GameData]] = {
@@ -283,6 +288,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
       }).toMap
     })
   }
+
   def loadTeamsFromDb(): Future[List[Team]] = {
     import play.modules.reactivemongo.json._
 
