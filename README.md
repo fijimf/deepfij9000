@@ -7,21 +7,28 @@ Basicall scrapes the NCAA website for data and generates some rudimentary analys
 
 The Deep Fij Modelling Framework
 ================================
+The Data Model
+--------------
+
+The focus of the data model is the Season.  
+
+A Season is identified by its year, and can be interrogated to return all of the games within that season and all of the results of games which have been completed.  Given the String key of a team, it can be interrogated to identify the conference of the team represented by the key.  It can be interrogated to privide a List of Date as well as Team. 
+
+A Game conssts of time and location of the game, the key of the home and away teams, whether the game was played at a neutral site, whether it was a conference tournamnet game, whether it was an NCAA tournament game (and the seeds of the teams if it was).  
+
+A Result contains the final scores for the home and away team as well as the number of periods the game took.
 
 Analysis
 --------
-
 ```scala
 trait Analysis[T] {
   def analyze(season: Season): (LocalDate, Team)=>Option[T]
 }
 ```
 
-At the highest level of generality, analysis constist of taking a seasons worth of data and converting using it to synthesize a function from a tuple of team and date to a type T.
+At the highest level of generality, analysis constist of taking a season's worth of data and using it to synthesize a function of team and date to a t of type T.
 
-A Season can communicate its data Seq[LocalDate] as well as the list of teams Seq[Team].  As such the domain of the resultant function is finite and limited.  This leads to opportunities for bothe memoization and caching.
-
-
+A Season can communicate its data Seq[LocalDate] as well as the list of teams Seq[Team].  As such the domain of the resultant function is discrete and limited.  This leads to opportunities for both memoization and caching.
 
 Typically when one considers analyses the type T is assumed to be numeric, but it need not be.  In fact if we treat T with greater generality, we can use analyses to generate further analyses.
 ```scala
