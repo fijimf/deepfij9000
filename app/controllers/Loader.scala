@@ -98,6 +98,12 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     collection.drop().flatMap(Unit => collection.bulkInsert(seasons.map(seasonHandler.write).toStream, ordered = false))
   }
 
+  def updateSeasonGames(data:Map[Int,List[Game]]): Future[MultiBulkWriteResult] = {
+    def collection: BSONCollection = db.collection[BSONCollection]("seasons")
+
+    collection.drop().flatMap(Unit => collection.bulkInsert(seasons.map(seasonHandler.write).toStream, ordered = false))
+  }
+
   def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
     def collection: BSONCollection = db.collection[BSONCollection]("teams")
     collection.drop().flatMap(Unit => collection.bulkInsert(teams.map(teamHandler.write).toStream, ordered = false))
@@ -150,21 +156,59 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def loadGames = Action.async {
-    val years = List(2015)
-    val gameData: List[GameData] = years.flatMap(y => {
-      DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).grouped(10).map(ds => {
-        getGameData(ds)
-      }).flatten
-    }).flatten
-
-    val enrichedGameData: List[(GameData, Boolean, Boolean)] = NeutralSiteSolver(ConferenceTourneySolver(gameData))
-    loadTeamsFromDb().map(tl=>{
+    loadTeamsFromDb().flatMap(tl=>{
+      loadAliasMap().map(am=>{
       val keySet: Set[String] = tl.map(_.key).toSet
-      logger.info("TeamKeys: "+keySet.size)
+      val years = List(2015)
+      val gameData: List[GameData] = years.flatMap(y => {
+        DateIterator(new LocalDate(y, 11, 1), new LocalDate(y + 1, 4, 30)).grouped(10).map(ds => {
+          getGameData(ds)
+        }).flatten
+      }).flatten
+
+        logger.info("Aliases:\n"+am.mkString("\n"))
+      val normalizedGameData = gameData.map(gd=> {
+        if (!keySet.contains(gd.homeTeamKey)) {
+          am.get(gd.homeTeamKey) match {
+            case Some(teamKey) => gd.copy(homeTeamKey = teamKey)
+            case None => gd
+          }
+        } else {
+          gd
+        }
+      }).map(gd=> {
+        if (!keySet.contains(gd.awayTeamKey)) {
+          am.get(gd.awayTeamKey) match {
+            case Some(teamKey) => gd.copy(awayTeamKey = teamKey)
+            case None => gd
+          }
+        } else {
+          gd
+        }
+      })
+
+      val missingTeams: Map[String, Int] = normalizedGameData.foldLeft(Map.empty[String, Int])((counts: Map[String, Int], gd: GameData) => {
+        def countKey(ss: String, d: Map[String, Int]): Map[String, Int] = {
+          if (keySet.contains(ss)) {
+            d
+          } else {
+            d + (ss -> (d.getOrElse(ss, 0) + 1))
+          }
+        }
+        countKey(gd.awayTeamKey, countKey(gd.homeTeamKey, counts))
+
+      })
+      logger.info("The following teams (seen twice or more) are unknown:\n"+missingTeams.toList.filter(_._2>2).sortBy(-_._2).mkString("\n"))
+      val enrichedGameData: List[(GameData, Boolean, Boolean)] = NeutralSiteSolver(ConferenceTourneySolver(normalizedGameData))
+   
+     
+      
       val kept = enrichedGameData.filter(gd=>keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey))
       val skipped = enrichedGameData.filterNot(gd=>keySet.contains(gd._1.homeTeamKey) && keySet.contains(gd._1.awayTeamKey))
       logger.info(skipped.map(egd=>egd._1.homeTeamKey+"|"+egd._1.awayTeamKey).mkString("\n"))
+        val map: List[Game] = kept.map(gd=>Game.fromGameData(gd._1, gd._2, gd._3))
       Ok(kept.mkString("\n"))
+      })
     })
 
 }

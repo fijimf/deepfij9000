@@ -51,7 +51,7 @@ trait NcaaComGameScraper {
   }
 
   def pullKeyFromLink(s: String): Option[String] = {
-    val regex = """'/schools/(\S+)'""".r.unanchored
+    val regex = """'/schools/([\w\-]+)'""".r.unanchored
     s match {
       case regex(key) => Some(key)
       case _ => None
