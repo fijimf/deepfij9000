@@ -10,5 +10,6 @@ GET     /scrapegg                 controllers.Loader.loadGames
 GET     /scrapett                 controllers.Loader.loadTeams
 GET     /scrapet                  controllers.MongoLoader.saveTeam()
 GET     /aliases/:key             controllers.MongoLoader.findByAlias(key)
+GET     /teams/:key               controllers.Main.team(key)
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

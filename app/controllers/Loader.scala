@@ -102,8 +102,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   def updateSeasonGames(academicYear: Int, games: List[Game]): Future[UpdateWriteResult] = {
     def collection: BSONCollection = db.collection[BSONCollection]("seasons")
     val sel = BSONDocument("academicYear" -> academicYear)
-    val upd = BSONDocument("games" -> games)
-    collection.update(sel, upd, upsert = true)
+    val upd = BSONDocument("$set" -> BSONDocument("games" -> games))
+    collection.update(sel, upd, upsert = false)
   }
 
   def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
