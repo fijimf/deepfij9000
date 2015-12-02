@@ -1,9 +1,13 @@
 
 package controllers.model
 
+import java.time.LocalDate
+
+import controllers.DateIterator
+
 case class Season(academicYear: Int, games: List[Game], conferenceMap: List[ConferenceMembership]) {
-    val conferences = conferenceMap.groupBy(_.conferenceKey).mapValues(_.map(_.teamKey))
-  val conferencesByTeam = conferenceMap.map(c=>c.teamKey->c.conferenceKey).toMap
+  val conferences = conferenceMap.groupBy(_.conferenceKey).mapValues(_.map(_.teamKey))
+  val conferencesByTeam = conferenceMap.map(c => c.teamKey -> c.conferenceKey).toMap
   val allTeams = (games.map(_.homeTeamKey) ++ games.map(_.awayTeamKey)).toSet.toList.sorted
   val allDates = {
     val ds = games.map(_.date)
@@ -25,7 +29,7 @@ case class Season(academicYear: Int, games: List[Game], conferenceMap: List[Conf
     (list.count(_.isWinner(t)), list.count(_.isLoser(t)))
   }
 
-  def overallRecord(t:String):(Int, Int) = {
+  def overallRecord(t: String): (Int, Int) = {
     calcRecord(t, gamesByTeam(t))
   }
 
@@ -35,29 +39,29 @@ case class Season(academicYear: Int, games: List[Game], conferenceMap: List[Conf
       case (a, b) => a == b
     }
   }
-  
-  def conferenceStandings(c:String):List[(String, (Int, Int),(Int,Int))] ={
-    conferences.get(c).map(ts=>{
-      ts.map(t=>(t, confRecord(t), overallRecord(t))).sortWith((line1: (String, (Int, Int), (Int, Int)), line2: (String, (Int, Int), (Int, Int))) => 
-        if (compareRecord(line1._2, line2._2)==0) {
-        compareRecord(line1._3, line2._3) >0
-      } else {
-        compareRecord(line1._2, line2._2)>0
-      }) 
-    }).getOrElse(List.empty[(String, (Int, Int),(Int,Int))])
+
+  def conferenceStandings(c: String): List[(String, (Int, Int), (Int, Int))] = {
+    conferences.get(c).map(ts => {
+      ts.map(t => (t, confRecord(t), overallRecord(t))).sortWith((line1: (String, (Int, Int), (Int, Int)), line2: (String, (Int, Int), (Int, Int))) =>
+        if (compareRecord(line1._2, line2._2) == 0) {
+          compareRecord(line1._3, line2._3) > 0
+        } else {
+          compareRecord(line1._2, line2._2) > 0
+        })
+    }).getOrElse(List.empty[(String, (Int, Int), (Int, Int))])
   }
-  
-  private[this] def compareRecord(i:(Int,Int), j:(Int,Int)):Int = {
-    if (i._1-i._2 == j._1-j._2) {
-      i._1-j._1
+
+  private[this] def compareRecord(i: (Int, Int), j: (Int, Int)): Int = {
+    if (i._1 - i._2 == j._1 - j._2) {
+      i._1 - j._1
     } else {
-      i._1-i._2 - j._1-j._2
+      i._1 - i._2 - j._1 - j._2
     }
   }
-  
 
-  def confRecord(t:String):(Int, Int) = {
-    calcRecord(gamesByTeam(t).filter(g=>isConferenceGame(g)))
+
+  def confRecord(t: String): (Int, Int) = {
+    calcRecord(t, gamesByTeam(t).filter(g => isConferenceGame(g)))
   }
 
 

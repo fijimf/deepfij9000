@@ -124,6 +124,23 @@ img.spin:hover {
     text-align: center
 }
 
+.table-ultra-condensed th,.table-ultra-condensed td{padding:1px 3px}
+
+.table .wl-cell {
+
+}
+
+.table .date-cell {
+
+}
+
+.table .opp-cell {
+
+}
+.table .result-cell {
+
+}
+
 #dateSelector {
     padding: 20px;
 }

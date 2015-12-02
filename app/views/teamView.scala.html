@@ -1,14 +1,54 @@
-@import model.Team
-@(team: Team)
+@import controllers.TeamPage
+@(tp: TeamPage)
 
-@base(team.name, None, team.colors.flatMap(_.primary)) {
-    <div class="row-fluid team-header-row" style="border-top : 12px solid @team.colors.map(_.primary).getOrElse("#5959595");border-bottom:12px solid @team.colors.map(_.primary).getOrElse("#5959595"); background-color: #ffffff; padding-left: 0;" >
+@base(tp.team.name, None, tp.team.colors.flatMap(_.primary)) {
+    <div class="row-fluid team-header-row" style="border-top : 12px solid @tp.team.colors.map(_.primary).getOrElse("#5959595");border-bottom:12px solid @tp.team.colors.map(_.primary).getOrElse("#5959595"); background-color: #ffffff; padding-left: 0;" >
     <div class="span1" id="team-header-logo">
-            <img class="spin" style="padding : 15px;" src="@team.logos.map(_.bigUrl).getOrElse("")">
+        <img class="spin" style="padding : 15px;" src="@tp.team.logos.map(_.bigUrl).getOrElse("")">
     </div>
     <div class="span9">
-        <h3 id="team-header-name" >@team.name @team.nickname</h3>
-        <h4 id="team-header-record">10-2, 1-1 Big East</h4>
+        <h3 id="team-header-name" >@tp.team.name @tp.team.nickname</h3>
+        <h4 id="team-header-record">@tp.record._1 - @tp.record._2, @tp.confRecord._1 - @tp.confRecord._2 @tp.conference</h4>
+    </div>
+    </div>
+    <div class="row-fluid team-header-row">
+    <div class="span6">
+        <h4 >Schedule</h4>
+        <table class="ultra-condensed">
+            <tbody>
+        @for(g<-tp.schedule){
+           <tr>
+               <td class="text-center"><strong>@g.wlKey(tp.team)</strong></td>
+               <td class="text-center">@g.dateStr()</td>
+               <td class="text-left">@g.atVs(tp.team)
+               <a href="/teams/@g.opponent(tp.team)"> @tp.teamMap.get(g.opponent(tp.team).getOrElse("")).map(_.name).getOrElse("") </a>
+               </td>
+               <td class="text-right">
+               @g.result.map(r=>r.homeScore.toString+" - "+r.awayScore.toString)
+               </td>
+           </tr>
+        }
+            </tbody>
+        </table>
+    </div>
+    <div class="span6">
+        <h4 >@tp.conference Standings</h4>
+        <table class="ultra-condensed">
+            <thead><tr><th/><th colspan="2">Conference</th><th colspan="2">Overall</th></tr></thead>
+            <tbody>
+        @for(line<-tp.standings){
+           <tr>
+               <td class="text-left">
+                   <a href="/teams/@line._1"> @tp.teamMap.get(line._1).map(_.name).getOrElse("") </a>
+               </td>
+               <td class="text-right">@line._2._1</td>
+               <td class="text-right">@line._2._2</td>
+               <td class="text-right">@line._3._1</td>
+               <td class="text-right">@line._3._2</td>
+           </tr>
+        }
+            </tbody>
+        </table>
     </div>
 </div>
     }

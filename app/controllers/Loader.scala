@@ -16,7 +16,7 @@ import play.modules.reactivemongo.json.collection.JSONCollection
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.{UpdateWriteResult, MultiBulkWriteResult}
+import reactivemongo.api.commands.{MultiBulkWriteResult, UpdateWriteResult}
 import reactivemongo.bson._
 
 import scala.concurrent.duration._
@@ -45,7 +45,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val reader: BSONDocumentReader[Team] = Macros.reader[Team]
 
   def loadConferenceMaps = Action.async {
-    import play.modules.reactivemongo.json._
 
     val aliasMap: Future[Map[String, String]] = loadAliasMap()
 
@@ -144,18 +143,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     })
   }
 
-  object DateIterator {
-    def apply(s: LocalDate, e: LocalDate): Iterator[LocalDate] = new Iterator[LocalDate] {
-      var d = s
-
-      override def hasNext: Boolean = d.isBefore(e)
-
-      override def next(): LocalDate = {
-        d = d.plusDays(1)
-        d
-      }
-    }
-  }
 
   def loadGames = Action.async {
     loadTeamsFromDb().flatMap(tl => {
@@ -290,7 +277,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def loadTeamsFromDb(): Future[List[Team]] = {
-    import play.modules.reactivemongo.json._
 
 
     val teamCollection = db.collection[BSONCollection]("teams")

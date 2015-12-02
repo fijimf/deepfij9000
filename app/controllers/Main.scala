@@ -37,12 +37,15 @@ class Main @Inject()(val reactiveMongoApi: ReactiveMongoApi)
   def team(key: String) = Action.async {
     for (
       s <- loadSeasonFromDb(2016);
-      t <- loadTeamFromDb(key)
+      tm <- loadTeamMap
     ) yield {
       s match {
         case Some(season) =>
-          t match {
-            case Some(team) => Ok(views.html.teamView(team))
+          tm.get(key) match {
+            case Some(team) => 
+              val conf: String = season.conferencesByTeam(key)
+              val tp: TeamPage = TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, season.gamesByTeam(key),tm, season.conferenceStandings(conf))
+              Ok(views.html.teamView(tp))
             case None => Ok("Unknown Team")
           }
         case None => Ok("Failed to load season")
@@ -50,6 +53,10 @@ class Main @Inject()(val reactiveMongoApi: ReactiveMongoApi)
     }
   }
 
+  def loadTeamMap():Future[Map[String, Team]] = {
+    val teamCollection = db.collection[BSONCollection]("teams")
+    teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().map(ll=>ll.map(t=>t.key->t).toMap)
+  }
   def loadTeamFromDb(key: String): Future[Option[Team]] = {
     val teamCollection = db.collection[BSONCollection]("teams")
     teamCollection.find(BSONDocument("key" -> key)).cursor[Team](ReadPreference.primaryPreferred).headOption
@@ -61,3 +68,4 @@ class Main @Inject()(val reactiveMongoApi: ReactiveMongoApi)
   }
 
 }
+case class TeamPage(team:Team, record:(Int,Int), confRecord:(Int, Int), conference:String, schedule:List[Game], teamMap:Map[String,Team], standings:List[(String, (Int, Int), (Int, Int))])
