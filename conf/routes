@@ -11,5 +11,26 @@ GET     /scrapett                 controllers.Loader.loadTeams
 GET     /scrapet                  controllers.MongoLoader.saveTeam()
 GET     /aliases/:key             controllers.MongoLoader.findByAlias(key)
 GET     /teams/:key               controllers.Main.team(key)
+
+
+GET  /deepfij/                                          controllers.Schedule.index
+GET  /deepfij/about                                     controllers.Application.about
+GET  /deepfij/analysis/spread-baseline                  controllers.Analysis.spread
+GET  /deepfij/teams                                     controllers.Schedule.teams
+GET  /deepfij/teams/:key                                controllers.Schedule.team(key)
+GET  /deepfij/teams/:key/:seasonKey                     controllers.Schedule.teamSeason(key, seasonKey)
+GET  /deepfij/search                                    controllers.Schedule.search(q:String)
+GET  /deepfij/stats                                     controllers.Schedule.stats
+GET  /deepfij/stats/:key                                controllers.Statistics.stat(key)
+GET  /deepfij/head2head/:key1/:key2                     controllers.Schedule.head2head(key1, key2)
+#TODO Regex this shit
+GET  /deepfij/:yyyy/:mm/:dd                             controllers.Schedule.date(yyyy:Int,mm:Int,dd:Int)
+
+GET  /api/quote                                         controllers.Quote.random
+GET  /api/stats/:key                                    controllers.Statistics.stats(key)
+GET  /api/games                                         controllers.Game.games
+GET  /api/scatter-games                                 controllers.Game.scatter
+
+
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
