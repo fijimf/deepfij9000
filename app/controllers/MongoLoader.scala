@@ -2,7 +2,7 @@ package controllers
 
 import javax.inject.Inject
 
-import controllers.model.{SocialData, LogoUrls, Colors, Team}
+import models.{Team, SocialData, LogoUrls, Colors}
 import play.api.libs.json.{JsString, JsArray, Json, JsObject}
 import play.api.mvc.{Action, Controller}
 import play.modules.reactivemongo._

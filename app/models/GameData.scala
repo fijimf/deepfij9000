@@ -1,4 +1,4 @@
-package controllers.model
+package models
 
 import org.joda.time.LocalDate
 

@@ -1,6 +1,6 @@
 package modules.scraping
 
-import controllers.model.GameData
+import models.GameData
 import org.joda.time.LocalDate
 import play.api.Logger
 

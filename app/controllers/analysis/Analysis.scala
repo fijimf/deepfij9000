@@ -1,7 +1,7 @@
 package controllers.analysis
 
 
-import controllers.model.{Game,  Season, Ncaa}
+import models.{Season, Ncaa, Game}
 import org.joda.time.LocalDate
 
 trait Analysis[T] {

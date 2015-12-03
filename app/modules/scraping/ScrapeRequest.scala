@@ -1,7 +1,7 @@
 package modules.scraping
 
-import controllers.model._
 import controllers.{TeamMaster, ConferenceMap, TeamMap, TeamConfMap}
+import models._
 import org.joda.time.LocalDate
 import play.api.libs.json.JsValue
 

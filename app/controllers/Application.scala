@@ -15,13 +15,13 @@ class Application @Inject()(@Named("data-load-actor") teamLoad: ActorRef)
                            (implicit ec: ExecutionContext) extends Controller {
   implicit val timeout = Timeout(105.seconds)
 
-  def index = Action {
-    Ok(views.html.index("Your new application is ready."))
-  }
+//  def index = Action {
+//    Ok(views.html.index("Your new application is ready."))
+//  }
 
-  def other = Action.async {
-    (teamLoad ? "Jim").map(s => Ok(views.html.index(s.toString)))
-  }
+//  def other = Action.async {
+//    (teamLoad ? "Jim").map(s => Ok(views.html.index(s.toString)))
+//  }
 
 }
 

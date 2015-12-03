@@ -188,7 +188,7 @@ img.spin:hover {
 .ws-range .ws-range-min {
     display: none;
     height: 100%;
-    background: tranparent;
+    background: transparent;
 }
 
 input[type="range"]::-moz-range-track {
@@ -267,13 +267,13 @@ input[type="range"]:active::-ms-thumb {
 input[type="range"]::-moz-range-progress {
     display: none;
     height: 100%;
-    background: tranparent;
+    background: transparent;
 }
 
 input[type="range"]::-ms-fill-lower {
     display: none;
     height: 100%;
-    background: tranparent;
+    background: transparent;
 }
 
 .no-cssrangeinput input[type="range"] {
@@ -333,4 +333,17 @@ input[type="range"]::-ms-fill-lower {
 
 .date-header-row a {
     color: #333;
+}
+
+#qotd {
+    min-height: 12px;
+    padding: 0px 15px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    font-style:italic;
+}
+
+#qotd p {
+    padding: 0;
+    margin: 0;
 }

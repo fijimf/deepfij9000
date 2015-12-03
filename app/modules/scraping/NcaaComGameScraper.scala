@@ -1,6 +1,6 @@
 package modules.scraping
 
-import controllers.model.{GameData, Result, TourneyInfo}
+import models.{TourneyInfo, Result, GameData}
 import org.joda.time.LocalDate
 import play.api.Logger
 import play.api.libs.json._

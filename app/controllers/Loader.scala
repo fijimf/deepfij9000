@@ -6,7 +6,7 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
-import controllers.model._
+import models._
 import modules.scraping._
 import org.joda.time.LocalDate
 import play.api.Logger
@@ -18,6 +18,7 @@ import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.{MultiBulkWriteResult, UpdateWriteResult}
 import reactivemongo.bson._
+import util.DateIterator
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
