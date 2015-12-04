@@ -1,0 +1,8 @@
+@(resourceType:String, resourceKey:String)
+
+@base(resourceType+" with key "+resourceKey+" was not found.", None, Some("#999")) {
+    <div class="row-fluid">
+        <div class="span12" ><p>@resourceType with key @resourceKey was not found.</p></div>
+    </div>
+
+    }

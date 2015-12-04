@@ -1,0 +1,14 @@
+@import models.Team
+
+@(f: Form[Team], name:String) (implicit messages: Messages)
+@base("Editing "+name, None,Some( "#ccc")) {
+
+    <div class="row-fluid"  >
+    <div class="span12">
+    @helper.form(action = routes.Schedule.saveTeam()) {
+        @helper.inputText(f("name"))
+        @helper.inputText(f("key"))
+    }
+    </div>
+</div>
+    }

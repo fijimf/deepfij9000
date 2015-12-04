@@ -5,6 +5,9 @@ import javax.inject.Inject
 import models._
 import models.viewdata.TeamPage
 import org.joda.time.LocalDate
+import play.api.data._
+import play.api.data.Forms._
+import play.api.i18n.{Lang, Messages, I18nSupport, MessagesApi}
 import play.api.mvc.{Action, Controller}
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
@@ -13,9 +16,11 @@ import reactivemongo.bson._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi)
-                    (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
+class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi: MessagesApi)
+                    (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents with I18nSupport{
 
+  import play.api.i18n.Messages.Implicits._
+  import play.api.Play.current
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
     def read(time: BSONDateTime) = new LocalDate(time.value)
 
@@ -53,14 +58,57 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi)
     }
   }
 
+  def editTeam(key:String) = Action.async {implicit request =>
+    val form = Form(
+      mapping(
+        "key"->text,
+        "name"->text,
+        "longName"->text,
+        "nickname"->text,
+        "logos"-> optional(
+          mapping(
+             "smallUrl"->optional(text),
+             "bigUrl"->optional(text)
+          )(LogoUrls.apply)(LogoUrls.unapply)
+        ),
+        "colors"-> optional(
+          mapping(
+            "primary"->optional(text),
+            "secondary"->optional(text)
+          )(Colors.apply)(Colors.unapply)
+        ),
+        "socialMedia"->  optional(
+        mapping(
+          "url"->optional(text),
+          "twitter"->optional(text),
+          "instagram"->optional(text),
+          "facebook"->optional(text)
+        )(SocialData.apply)(SocialData.unapply)
+        )
+      )(Team.apply)(Team.unapply)
+    )
+    for (
+      tm <- loadTeamFromDb(key)
+    ) yield {
+      tm match {
+        case Some(t) =>
+          form.fill(t)
+          Ok(views.html.teamEdit(form.fill(t), t.name))
+        case None => Ok(views.html.resourceNotFound("Team", key))
+      }
+    }
+  }
+
+  def saveTeam = play.mvc.Results.TODO
+
   def loadTeamMap():Future[Map[String, Team]] = {
     val teamCollection = db.collection[BSONCollection]("teams")
     teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().map(ll=>ll.map(t=>t.key->t).toMap)
   }
-//  def loadTeamFromDb(key: String): Future[Option[Team]] = {
-//    val teamCollection = db.collection[BSONCollection]("teams")
-//    teamCollection.find(BSONDocument("key" -> key)).cursor[Team](ReadPreference.primaryPreferred).headOption
-//  }
+  def loadTeamFromDb(key: String): Future[Option[Team]] = {
+    val teamCollection = db.collection[BSONCollection]("teams")
+    teamCollection.find(BSONDocument("key" -> key)).cursor[Team](ReadPreference.primaryPreferred).headOption
+  }
 
   def loadSeasonFromDb(academicYear: Int): Future[Option[Season]] = {
     val seasonCollection = db.collection[BSONCollection]("seasons")
@@ -74,5 +122,7 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi)
   def search(q: String) = play.mvc.Results.TODO
 
   def date(yyyy: Int, mm: Int, dd: Int) = play.mvc.Results.TODO
+
+
 }
 
