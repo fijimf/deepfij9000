@@ -5,6 +5,7 @@ import javax.inject.Inject
 import models._
 import models.viewdata.TeamPage
 import org.joda.time.LocalDate
+import play.api.Logger
 import play.api.data._
 import play.api.data.Forms._
 import play.api.i18n.{Lang, Messages, I18nSupport, MessagesApi}
@@ -18,9 +19,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi: MessagesApi)
                     (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents with I18nSupport{
+  val log = Logger(classOf[Schedule])
 
-  import play.api.i18n.Messages.Implicits._
-  import play.api.Play.current
+
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
     def read(time: BSONDateTime) = new LocalDate(time.value)
 
@@ -59,6 +60,8 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   }
 
   def editTeam(key:String) = Action.async {implicit request =>
+log.info(request.toString())
+log.info(request2Messages.toString)
     val form = Form(
       mapping(
         "key"->text,
