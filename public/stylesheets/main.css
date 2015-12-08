@@ -124,7 +124,9 @@ img.spin:hover {
     text-align: center
 }
 
-.table-ultra-condensed th,.table-ultra-condensed td{padding:1px 3px}
+.table-ultra-condensed th, .table-ultra-condensed td {
+    padding: 1px 3px
+}
 
 .table .wl-cell {
 
@@ -137,6 +139,7 @@ img.spin:hover {
 .table .opp-cell {
 
 }
+
 .table .result-cell {
 
 }
@@ -152,6 +155,7 @@ img.spin:hover {
 #dateSlider {
     margin-top: 22px;
 }
+
 /*Date slider!!!*/
 
 .ws-range, input[type="range"] {
@@ -306,7 +310,7 @@ input[type="range"]::-ms-fill-lower {
     text-decoration: none;
 }
 
-.mini-stat h3, .mini-stat h4,.mini-stat h5 {
+.mini-stat h3, .mini-stat h4, .mini-stat h5 {
     margin-top: -1px;
     margin-bottom: 0;
 
@@ -340,10 +344,18 @@ input[type="range"]::-ms-fill-lower {
     padding: 0px 15px;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 9px;
-    font-style:italic;
+    font-style: italic;
 }
 
 #qotd p {
     padding: 0;
     margin: 0;
+}
+
+dt label {
+    font-weight: bold;
+}
+
+dd {
+    margin-left: 0;
 }

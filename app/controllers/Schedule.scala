@@ -58,38 +58,36 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
       }
     }
   }
-
-  def editTeam(key:String) = Action.async {implicit request =>
-log.info(request.toString())
-log.info(request2Messages.toString)
-    val form = Form(
-      mapping(
-        "key"->text,
-        "name"->text,
-        "longName"->text,
-        "nickname"->text,
-        "logos"-> optional(
-          mapping(
-             "smallUrl"->optional(text),
-             "bigUrl"->optional(text)
-          )(LogoUrls.apply)(LogoUrls.unapply)
-        ),
-        "colors"-> optional(
-          mapping(
-            "primary"->optional(text),
-            "secondary"->optional(text)
-          )(Colors.apply)(Colors.unapply)
-        ),
-        "socialMedia"->  optional(
+  val form = Form(
+    mapping(
+      "key"->text,
+      "name"->text,
+      "longName"->text,
+      "nickname"->text,
+      "logos"-> optional(
+        mapping(
+          "smallUrl"->optional(text),
+          "bigUrl"->optional(text)
+        )(LogoUrls.apply)(LogoUrls.unapply)
+      ),
+      "colors"-> optional(
+        mapping(
+          "primary"->optional(text),
+          "secondary"->optional(text)
+        )(Colors.apply)(Colors.unapply)
+      ),
+      "socialMedia"->  optional(
         mapping(
           "url"->optional(text),
           "twitter"->optional(text),
           "instagram"->optional(text),
           "facebook"->optional(text)
         )(SocialData.apply)(SocialData.unapply)
-        )
-      )(Team.apply)(Team.unapply)
-    )
+      )
+    )(Team.apply)(Team.unapply)
+  )
+  def editTeam(key:String) = Action.async {implicit request =>
+
     for (
       tm <- loadTeamFromDb(key)
     ) yield {
@@ -102,7 +100,20 @@ log.info(request2Messages.toString)
     }
   }
 
-  def saveTeam = play.mvc.Results.TODO
+  def saveTeam = Action { implicit request =>
+    form.bindFromRequest.fold(
+      formWithErrors => {
+
+        BadRequest(views.html.teamEdit(formWithErrors, formWithErrors("name").value.getOrElse("Missing")))
+      },
+      teamData => {
+        /* binding success, you get the actual value. */
+        log.info("Saving " + teamData)
+
+        Redirect(routes.Schedule.team(teamData.key))
+      }
+    )
+  }
 
   def loadTeamMap():Future[Map[String, Team]] = {
     val teamCollection = db.collection[BSONCollection]("teams")
