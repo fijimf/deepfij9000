@@ -1,7 +1,7 @@
 @import models.Team
 
 @(f: Form[Team], name: String)(implicit messages: Messages)
-@base("Editing " + name, None, Some("#ccc")) {
+@base("Editing " + name, None) {
 
     <div class="row-fluid" >
         <div class="span12">
@@ -9,16 +9,17 @@
                 <h1>Editing @name</h1>
                 <div class="well">
                 @helper.form(action = routes.Schedule.saveTeam(), 'role -> "form", 'class -> "form-horizontal") {
-                    @helper.inputText(f("name"), '_label -> "Name", 'class -> "form-control")
-                    @helper.inputText(f("key"), '_label -> "Key", 'class -> "form-control")
-                    @helper.inputText(f("longName"), '_label -> "Long Name", 'class -> "form-control")
-                    @helper.inputText(f("nickname"), '_label -> "Nickname", 'class -> "form-control")
 
-                    @helper.inputText(f("logos.smallUrl"), '_label -> "Small Logo", 'class -> "form-control")
-                    @helper.inputText(f("logos.bigUrl"), '_label -> "Big Logo", 'class -> "form-control")
+                    @helper.inputText(f("key"), '_label -> "Key", 'class -> "form-control col-xs-3", 'disabled->"true")
+                    @helper.inputText(f("name"), '_label -> "Name", 'class -> "form-control col-xs-3")
+                    @helper.inputText(f("longName"), '_label -> "Long Name", 'class -> "form-control col-xs-5")
+                    @helper.inputText(f("nickname"), '_label -> "Nickname", 'class -> "form-control col-xs-3")
 
-                    @helper.inputText(f("colors.primary"), '_label -> "Primary Color", 'class -> "form-control")
-                    @helper.inputText(f("colors.secondary"), '_label -> "Secondary Color", 'class -> "form-control")
+                    @helper.inputText(f("logos.smallUrl"), '_label -> "Small Logo", 'class -> "form-control col-xs-6")
+                    @helper.inputText(f("logos.bigUrl"), '_label -> "Big Logo", 'class -> "form-control col-xs-6")
+
+                    @helper.inputText(f("colors.primary"), '_label -> "Primary Color", 'class -> "form-control col-xs-3")
+                    @helper.inputText(f("colors.secondary"), '_label -> "Secondary Color", 'class -> "form-control col-xs-3")
                     <input type="submit"/>
                 }
                 </div>

@@ -14,6 +14,8 @@ libraryDependencies ++= Seq(
 )
 libraryDependencies += "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2.1"
 libraryDependencies += "org.reactivemongo" %% "play2-reactivemongo" % "0.11.7.play24"
+libraryDependencies += "org.webjars" % "bootstrap" % "3.3.6"
+libraryDependencies += "org.webjars" % "jquery" % "1.9.1"
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
