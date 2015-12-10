@@ -1,4 +1,4 @@
-@(title:String, user:Option[User])(content:Html)
+@(title:String, user:Option[User], bgColor:Option[String])(content:Html)
 
 <!DOCTYPE html>
 
@@ -6,6 +6,7 @@
     <head>
         <title>@title</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href='https://fonts.googleapis.com/css?family=Archivo+Narrow:700italic,400|Fira+Sans:400,700italic' rel='stylesheet' type='text/css'>
         <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/main.css")">
         <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
         <script src="@routes.Assets.versioned("lib/jquery/jquery.js")" type="text/javascript"></script>
@@ -15,8 +16,11 @@
         <script src="@routes.Assets.versioned("javascripts/admin.js")" type="text/javascript"></script>
         <script src="@routes.Assets.versioned("javascripts/statistics.js")" type="text/javascript"></script>
     </head>
-    <body >
+    <body style="background-image:url(@routes.Assets.versioned("images/nasty_fabric.png"));" >
+
         @navbar(user)
+    <div style="height: 100%; width: 100%; background-color: @bgColor.getOrElse("rgba(192,192,234,0.4)") ">
         @content
+    </div>
     </body>
 </html>

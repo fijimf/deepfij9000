@@ -40,22 +40,34 @@ case class Season(academicYear: Int, games: List[Game], conferenceMap: List[Conf
     }
   }
 
+  implicit val recordOrdering: Ordering[(String, (Int, Int), (Int, Int))] = new Ordering[(String, (Int, Int), (Int, Int))] {
+    def compare(x: (String, (Int, Int), (Int, Int)), y: (String, (Int, Int), (Int, Int))) = {
+      val a = compareRecord(x._2, y._2)
+      if (a == 0) {
+        val b = compareRecord(x._3, y._3)
+        if (b == 0) {
+          x._1.compareTo(y._1)
+        } else {
+          b
+        }
+      } else {
+        a
+      }
+    }
+  }
+
   def conferenceStandings(c: String): List[(String, (Int, Int), (Int, Int))] = {
     conferences.get(c).map(ts => {
-      ts.map(t => (t, confRecord(t), overallRecord(t))).sortWith((line1: (String, (Int, Int), (Int, Int)), line2: (String, (Int, Int), (Int, Int))) =>
-        if (compareRecord(line1._2, line2._2) == 0) {
-          compareRecord(line1._3, line2._3) > 0
-        } else {
-          compareRecord(line1._2, line2._2) > 0
-        })
+      ts.map(t => (t, confRecord(t), overallRecord(t))).sorted
     }).getOrElse(List.empty[(String, (Int, Int), (Int, Int))])
   }
 
+
   private[this] def compareRecord(i: (Int, Int), j: (Int, Int)): Int = {
     if (i._1 - i._2 == j._1 - j._2) {
-      i._1 - j._1
+      j._1 - i._1
     } else {
-      i._1 - i._2 - j._1 - j._2
+      (j._1 - j._2) - (i._1 - i._2)
     }
   }
 

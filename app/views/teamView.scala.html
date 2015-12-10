@@ -1,61 +1,65 @@
 @import models.viewdata.TeamPage
 @(tp: TeamPage)
 
-@base(tp.team.name, None) {
-    <div class="container-fluid">
-        <div class="row-fluid " style="border-top : 12px solid @tp.team.colors.map(_.primary).getOrElse("#5959595");border-bottom:12px solid @tp.team.colors.map(_.primary).getOrElse("#5959595"); background-color: #ffffff; padding-left: 0;" >
-            <div class="col-xs-3" id="team-header-logo">
-                <img class="spin" style="padding : 15px;" src="@tp.team.logos.map(_.bigUrl).getOrElse("")">
-            </div>
-            <div class="col-xs-9">
-                <h3 id="team-header-name" >@tp.team.name @tp.team.nickname</h3>
-                <h4 id="team-header-record">@tp.record._1 - @tp.record._2, @tp.confRecord._1 - @tp.confRecord._2 @tp.conference</h4>
-            </div>
+@base(tp.team.name, None, tp.team.colors.flatMap(_.secondary)) {
+    <div class="container" style="background-color: rgb(247,247,255)" >
+    @defining("16px solid " + tp.team.colors.flatMap(_.primary).getOrElse("rgb (16, 16, 0)")) { border =>
+        <div class="row" id="team-box" style="border-top:@border; border-bottom:@border;" >
+            <div class = "col-md-1" id="team-header-logo">
+            <img class="spin center-block" src="@tp.team.logos.map(_.bigUrl).getOrElse("")" >
         </div>
-        <div class="row-fluid">
-            <div class="col-xs-12" id="qotd">
-                <p>We are not monsters; we're moral people/And yet we have the strength to do this.</p>
-            </div>
+        <div class="col-md-5">
+            <h1 id="team-header-name" class="team-header">@tp.team.name @tp.team.nickname</h1>
+            <h1 id="team-header-record" class="team-header"><small>@tp.record._1
+                - @tp.record._2, @tp.confRecord._1 - @tp.confRecord._2 @tp.conference</small></h1>
         </div>
-        <div class="row-fluid ">
-            <div class="col-xs-4">
-                <h4 >Schedule</h4>
-                <table class="ultra-condensed">
-                    <tbody>
-                    @for(g<-tp.schedule){
-                        <tr>
-                            <td class="text-center"><strong>@g.wlKey(tp.team)</strong></td>
-                            <td class="text-center">@g.dateStr()</td>
-                            <td class="text-left">@g.atVs(tp.team)
-                            <a href="/deepfij/teams/@g.opponent(tp.team)"> @tp.teamMap.get(g.opponent(tp.team).getOrElse("")).map(_.name).getOrElse("") </a>
-                            </td>
-                            <td class="text-right">
-                            @g.result.map(r=>r.homeScore.toString+" - "+r.awayScore.toString)
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-            <div class="col-xs-4">
-                <h4 >@tp.conference Standings</h4>
-                <table class="ultra-condensed">
-                    <thead><tr><th></th><th colspan="2">Conference</th><th colspan="2">Overall</th></tr></thead>
-                    <tbody>
-                    @for(line<-tp.standings){
-                        <tr>
-                            <td class="text-left">
-                                <a href="/deepfij/teams/@line._1"> @tp.teamMap.get(line._1).map(_.name).getOrElse("") </a>
-                            </td>
-                            <td class="text-right">@line._2._1</td>
-                            <td class="text-right">@line._2._2</td>
-                            <td class="text-right">@line._3._1</td>
-                            <td class="text-right">@line._3._2</td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
+        <div class="col-md-6"></div>
+    </div>
+}
+    <div class="row">
+        <div class="col-md-12" id="qotd">
+            <p>We are not monsters; we're moral people/And yet we have the strength to do this.</p>
         </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <h4 >Schedule</h4>
+            <table class="ultra-condensed">
+                <tbody>
+                @for( g <- tp.schedule) {
+                    <tr>
+                        <td class="text-center"><strong>@g.wlKey(tp.team)</strong></td>
+                        <td class="text-center">@g.dateStr()</td>
+                        <td class="text-left">@g.atVs(tp.team)
+                        <a href="/deepfij/teams/@g.opponent(tp.team)"> @tp.teamMap.get(g.opponent(tp.team).getOrElse("")).map(_.name).getOrElse("") </a>
+                        </td>
+                        <td class="text-right">
+                        @g.result.map(r => r.homeScore.toString + " - " + r.awayScore.toString)
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-4">
+            <h4 >@tp.conference Standings</h4>
+            <table class="ultra-condensed">
+                <thead><tr><th></th><th colspan="2">Conference</th><th colspan="2">Overall</th></tr></thead>
+                <tbody>
+                @for( line <- tp.standings) {
+                    <tr>
+                        <td class="text-left">
+                            <a href="/deepfij/teams/@line._1"> @tp.teamMap.get(line._1).map(_.name).getOrElse("") </a>
+                        </td>
+                        <td class="text-right">@line._2._1</td>
+                        <td class="text-right">@line._2._2</td>
+                        <td class="text-right">@line._3._1</td>
+                        <td class="text-right">@line._3._2</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
     </div>
 }
