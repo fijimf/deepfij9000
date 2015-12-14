@@ -13,12 +13,14 @@ import play.api.mvc.{Action, Controller}
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
+import reactivemongo.api.commands.MultiBulkWriteResult
 import reactivemongo.bson._
 
+import scala.collection.immutable.Iterable
 import scala.concurrent.{ExecutionContext, Future}
 
 class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi: MessagesApi)
-                    (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents with I18nSupport{
+                        (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents with I18nSupport {
   val log = Logger(classOf[Schedule])
 
 
@@ -43,14 +45,15 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   def team(key: String) = Action.async {
     for (
       s <- loadSeasonFromDb(2016);
-      tm <- loadTeamMap
+      tm <- loadTeamMap()
     ) yield {
       s match {
         case Some(season) =>
           tm.get(key) match {
-            case Some(team) => 
+            case Some(team) =>
+              log.info(season.conferencesByTeam.toString())
               val conf: String = season.conferencesByTeam(key)
-              val tp: TeamPage = TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, season.gamesByTeam(key),tm, season.conferenceStandings(conf))
+              val tp: TeamPage = TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, season.gamesByTeam(key), tm, season.conferenceStandings(conf))
               Ok(views.html.teamView(tp))
             case None => Ok("Unknown Team")
           }
@@ -58,35 +61,37 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
       }
     }
   }
+
   val form = Form(
     mapping(
-      "key"->text,
-      "name"->text,
-      "longName"->text,
-      "nickname"->text,
-      "logos"-> optional(
+      "key" -> text,
+      "name" -> text,
+      "longName" -> text,
+      "nickname" -> text,
+      "logos" -> optional(
         mapping(
-          "smallUrl"->optional(text),
-          "bigUrl"->optional(text)
+          "smallUrl" -> optional(text),
+          "bigUrl" -> optional(text)
         )(LogoUrls.apply)(LogoUrls.unapply)
       ),
-      "colors"-> optional(
+      "colors" -> optional(
         mapping(
-          "primary"->optional(text),
-          "secondary"->optional(text)
+          "primary" -> optional(text),
+          "secondary" -> optional(text)
         )(Colors.apply)(Colors.unapply)
       ),
-      "socialMedia"->  optional(
+      "socialMedia" -> optional(
         mapping(
-          "url"->optional(text),
-          "twitter"->optional(text),
-          "instagram"->optional(text),
-          "facebook"->optional(text)
+          "url" -> optional(text),
+          "twitter" -> optional(text),
+          "instagram" -> optional(text),
+          "facebook" -> optional(text)
         )(SocialData.apply)(SocialData.unapply)
       )
     )(Team.apply)(Team.unapply)
   )
-  def editTeam(key:String) = Action.async {implicit request =>
+
+  def editTeam(key: String) = Action.async { implicit request =>
 
     for (
       tm <- loadTeamFromDb(key)
@@ -109,19 +114,39 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
       teamData => {
         /* binding success, you get the actual value. */
         log.info("Saving " + teamData)
-
+        def collection: BSONCollection = db.collection[BSONCollection]("teams")
+        val sel = BSONDocument("key" -> teamData.key)
+        val upd = BSONDocument("$set" -> teamHandler.write(teamData))
+        collection.update(sel, upd, upsert = true)
         Redirect(routes.Schedule.team(teamData.key))
       }
     )
   }
 
-  def loadTeamMap():Future[Map[String, Team]] = {
-    val teamCollection = db.collection[BSONCollection]("teams")
-    teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().map(ll=>ll.map(t=>t.key->t).toMap)
+  def checkData = Action.async {
+    (for (
+      teams <- loadTeamMap();
+      seasons <- loadSeasonMap()
+    ) yield {
+      seasons.map(s => {
+        s._2.verify(teams).mkString("\n")
+      }).mkString("\n\n\n")
+    }).map(s => Ok(s))
   }
+
+  def loadTeamMap(): Future[Map[String, Team]] = {
+    val teamCollection = db.collection[BSONCollection]("teams")
+    teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().map(ll => ll.map(t => t.key -> t).toMap)
+  }
+
   def loadTeamFromDb(key: String): Future[Option[Team]] = {
     val teamCollection = db.collection[BSONCollection]("teams")
     teamCollection.find(BSONDocument("key" -> key)).cursor[Team](ReadPreference.primaryPreferred).headOption
+  }
+
+  def loadSeasonMap(): Future[Map[Int, Season]] = {
+    val seasonCollection = db.collection[BSONCollection]("seasons")
+    seasonCollection.find(BSONDocument()).cursor[Season](ReadPreference.primaryPreferred).collect[List]().map(fss => fss.map(ss => ss.academicYear -> ss).toMap)
   }
 
   def loadSeasonFromDb(academicYear: Int): Future[Option[Season]] = {

@@ -27,7 +27,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
                       (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
   val logger: Logger = Logger(this.getClass)
   implicit val globalTimeout = Timeout(2.minutes)
-  val academicYears: List[Int] = List(2012, 2013, 2014, 2015, 2016)
+  val academicYears: List[Int] = List( 2013, 2014, 2015, 2016)
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
     def read(time: BSONDateTime) = new LocalDate(time.value)
 
@@ -48,7 +48,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   def loadConferenceMaps = Action.async {
 
     val aliasMap: Future[Map[String, String]] = loadAliasMap()
-
+    logger.info("Requested alias map.");
 
     val confAlignmentByYear: Map[Int, Map[String, List[String]]] = academicYears.map(yr => {
       yr -> aacToBigEastHack(Await.result(conferenceAlignmentByYear(yr), 1.minute))
@@ -246,12 +246,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
   def conferenceAlignmentByYear(yr: Int): Future[Map[String, List[String]]] = {
     val masterTeamConference: Future[TeamConfMap] = (teamLoad ? ShortTeamAndConferenceByYear(yr)).mapTo[TeamConfMap]
-    masterTeamConference.flatMap(tcm => {
+    masterTeamConference.map(tcm => {
       val confMap: Map[Int, String] = tcm.cm.data
-      Future.sequence(confMap.keys.map(c => {
-        val future = (teamLoad ? ShortTeamByYearAndConference(yr, c)).mapTo[TeamMap]
-        future.map(_.data.values.toList).map(confMap.getOrElse(c, c.toString) -> _)
-      })).map(_.toMap)
+      confMap.keys.map(conferenceKey => {
+        val conferenceName: String = confMap.getOrElse(conferenceKey, conferenceKey.toString)
+        val teamMap: TeamMap = Await.result((teamLoad ? ShortTeamByYearAndConference(yr, conferenceKey)).mapTo[TeamMap], 60.seconds)
+        conferenceName -> teamMap.data.values.toList
+      }).toMap
     })
   }
 

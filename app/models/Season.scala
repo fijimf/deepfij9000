@@ -6,12 +6,31 @@ import java.time.LocalDate
 import util.DateIterator
 
 case class Season(academicYear: Int, games: List[Game], conferenceMap: List[ConferenceMembership]) {
+  def verify(teams: Map[String, Team]): List[String] = {
+    val teamSet: Set[String] = conferenceMap.map(_.teamKey).toSet
+     List(
+     "Academic year is "+academicYear,
+     "Number of games is "+games.size,
+     "Number of games with results is "+ games.filter(_.result.isDefined).size,
+     "Number of teams mapped to conferences is "+conferenceMap.size  ,
+     "Number of conferences is "+conferenceMap.map(_.conferenceKey).distinct.size,
+     "Teams not mapped to conferences: "+teams.keys.filter(tk=> !teamSet.contains(tk)).mkString(", "),
+     "Teams with no games "+ teamSet.filter(tk=>gamesByTeam(tk).isEmpty)
+
+
+
+
+     )
+  }
+
   val conferences = conferenceMap.groupBy(_.conferenceKey).mapValues(_.map(_.teamKey))
   val conferencesByTeam = conferenceMap.map(c => c.teamKey -> c.conferenceKey).toMap
-  val allTeams = (games.map(_.homeTeamKey) ++ games.map(_.awayTeamKey)).toSet.toList.sorted
+  val allTeams = (games.map(_.homeTeamKey) ++ games.map(_.awayTeamKey)).distinct.sorted
   val allDates = {
-    val ds = games.map(_.date)
-    DateIterator(ds.minBy(_.toDate.getTime), ds.maxBy(_.toDate.getTime)).toList
+    games.map(_.date) match {
+      case Nil => List.empty[LocalDate]
+      case ds => DateIterator(ds.minBy(_.toDate.getTime), ds.maxBy(_.toDate.getTime)).toList
+    }
   }
   private[this] val homeGames = games.groupBy(_.homeTeamKey)
   private[this] val awayGames = games.groupBy(_.awayTeamKey)

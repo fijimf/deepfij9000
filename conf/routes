@@ -10,6 +10,7 @@ GET         /admin/loadTeams                controllers.Loader.loadTeams
 GET         /admin/aliases                  controllers.MongoLoader.findByAlias(key)
 GET         /admin/editTeam/:key            controllers.Schedule.editTeam(key)
 POST        /admin/saveTeam                 controllers.Schedule.saveTeam
+GET         /admin/check                    controllers.Schedule.checkData
 
 
 GET         /deepfij/                       controllers.Schedule.index

@@ -63,10 +63,13 @@ trait NcaaComGameScraper {
       .replaceFirst( """^callbackWrapper\(\{""", """{""")
       .replaceFirst( """}\);$""", """}""")
       .replaceAll( """,\s+,""", ", ")
+      .replaceAll( """,\s+,\s+,""", ", ")
+      .replaceAll( """,\s+,\s+,\s+,""", ", ")
+      .replaceAll( """,\s+,\s+,\s+,\s+,""", ", ")
+      .replaceAll( """,\s+,\s+,\s+,\s+,\s+,""", ", ")
+      .replaceAll( """,\s+,\s+,\s+,\s+,\s+,\s+,""", ", ")
+      .replaceAll( """\[\s+,""", "[ ")
+      .replaceAll( """,\s+\]""", "] ")
+
   }
 }
-
-
-
-
-
