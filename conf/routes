@@ -25,7 +25,6 @@ GET         /deepfij/search                 controllers.Schedule.search(q:String
 #TODO Regex this shit
 GET         /deepfij/:yyyy/:mm/:dd          controllers.Schedule.date(yyyy:Int,mm:Int,dd:Int)
 
-GET         /api/quote                      controllers.Quote.random
 #GET  /api/stats/:key                                    controllers.Statistics.stats(key)
 #GET  /api/games                                         controllers.Game.games
 #GET  /api/scatter-games                                 controllers.Game.scatter

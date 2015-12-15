@@ -15,9 +15,11 @@ import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.MultiBulkWriteResult
 import reactivemongo.bson._
+import scala.concurrent.duration._
 
 import scala.collection.immutable.Iterable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Random
 
 class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi: MessagesApi)
                         (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents with I18nSupport {
@@ -42,6 +44,8 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   implicit val seasonReader: BSONDocumentReader[Season] = Macros.reader[Season]
   implicit val teamReader: BSONDocumentReader[Team] = Macros.reader[Team]
 
+  def randomQuote(): String = if (quoteList.isEmpty) "" else quoteList(Random.nextInt(quoteList.size)).quote
+
   def team(key: String) = Action.async {
     for (
       s <- loadSeasonFromDb(2016);
@@ -53,7 +57,7 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
             case Some(team) =>
               log.info(season.conferencesByTeam.toString())
               val conf: String = season.conferencesByTeam(key)
-              val tp: TeamPage = TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, season.gamesByTeam(key), tm, season.conferenceStandings(conf))
+              val tp: TeamPage = TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, randomQuote(), season.gamesByTeam(key), tm, season.conferenceStandings(conf))
               Ok(views.html.teamView(tp))
             case None => Ok("Unknown Team")
           }
@@ -152,6 +156,13 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   def loadSeasonFromDb(academicYear: Int): Future[Option[Season]] = {
     val seasonCollection = db.collection[BSONCollection]("seasons")
     seasonCollection.find(BSONDocument("academicYear" -> academicYear)).cursor[Season](ReadPreference.primaryPreferred).headOption
+  }
+
+
+  val quoteList: List[Quote] = {
+    implicit val quoteReader: BSONDocumentReader[Quote] = Macros.reader[Quote]
+    val seasonCollection = db.collection[BSONCollection]("quotes")
+    Await.result(seasonCollection.find(BSONDocument()).cursor[Quote](ReadPreference.primaryPreferred).collect[List](), 60.seconds)
   }
 
   def index() = play.mvc.Results.TODO

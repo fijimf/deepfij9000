@@ -1,0 +1,13 @@
+db.quotes.insert([
+{"quote":"We are not monsters; we're moral people/And yet we have the strength to do this."},
+{"quote":"Big Ben this here's Rubber Duck, and I'm about to put the hammer down." },
+{"quote":"Anger is an energy"},
+{"quote":"Let fury have the hour/Anger can be power"},
+{"quote":"He got a .32 gun in his pocket for fun/He got a razor in his shoe."},
+{"quote":"Lord Lucan is missing."},
+{"quote":"Duffy's good vibrations and our imaginations can't go in indefinitely."},
+{"quote":"We walk the streets at night/We go where eagles dare."},
+{"quote":"Yankee detectives are always on the TV/Cause killers in America work seven days a week."},
+{"quote":"We have to pay for everything/But some things are for free/We live on blood/We are Sparta F.C."},
+{"quote":"They smelled of pubs and Wormwood Scrubs and too many right wing meetings"}
+])

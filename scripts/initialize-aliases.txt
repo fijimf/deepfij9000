@@ -1,0 +1,22 @@
+db.aliases.insert([
+{ "alias" : "uncw", "key" : "unc-wilmington" },
+{ "alias" : "csun", "key" : "cal-st-northridge" },
+{ "alias" : "uncg", "key" : "unc-greensboro" },
+{ "alias" : "little-rock", "key" : "ualr" },
+{ "alias" : "army-west-point", "key" : "army" },
+{ "alias" : "siue", "key" : "siu-edwardsville" },
+{ "alias" : "etsu", "key" : "east-tenn-st" },
+{ "alias" : "csu-bakersfield", "key" : "bakersfield" },
+{ "alias" : "Omaha", "key" : "neb-omaha" },
+{ "alias" : "st-josephs", "key" :"saint-josephs" },
+{ "alias" : "md-east-shore", "key" : "umes" },
+{ "alias" : "sc-upstate", "key" :"usc-upstate" },
+{ "alias" : "st-francis-ny", "key" : "st-francis-brooklyn" },
+{ "alias" : "loyola-il", "key" : "loyola-chicago" },
+{ "alias" : "fla-gulf-coast", "key" : "fgcu" },
+{ "alias" : "st-francis-pa", "key" : "saint-francis-pa" },
+{ "alias" : "st-peters", "key" : "saint-peters" },
+{ "alias" : "alcorn-st", "key" : "alcorn" },
+{ "alias" : "neb-omaha", "key" : "omaha" },
+{ "alias" : "long-island", "key" : "liu-brooklyn" }
+])

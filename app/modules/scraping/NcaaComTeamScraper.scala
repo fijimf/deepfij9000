@@ -43,6 +43,9 @@ trait NcaaComTeamScraper {
   def schoolOfficialTwitter(n: Node): Option[String] = {
     (n \\ "li").find(n => attrMatch(n, "class", "school-social-twitter")).map(_ \\ "a").flatMap(_.headOption).flatMap(nn=>attrValue(nn,"href"))
   }
+  def schoolOfficialFacebook(n: Node): Option[String] = {
+    (n \\ "li").find(n => attrMatch(n, "class", "school-social-facebook")).map(_ \\ "a").flatMap(_.headOption).flatMap(nn=>attrValue(nn,"href"))
+  }
 
   def schoolMetaInfo(n:Node):Map[String,String] = {
     val items: Seq[Node] = (n \\ "li").filter(n => attrMatch(n, "class", "school-info"))

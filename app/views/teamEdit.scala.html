@@ -10,7 +10,7 @@
                 <div class="well">
                 @helper.form(action = routes.Schedule.saveTeam(), 'role -> "form", 'class -> "form-horizontal") {
 
-                    @helper.inputText(f("key"), '_label -> "Key", 'class -> "form-control col-xs-3", 'disabled->"true")
+                    @helper.inputText(f("key"), '_label -> "Key", 'class -> "form-control col-xs-3", 'readonly->"true")
                     @helper.inputText(f("name"), '_label -> "Name", 'class -> "form-control col-xs-3")
                     @helper.inputText(f("longName"), '_label -> "Long Name", 'class -> "form-control col-xs-5")
                     @helper.inputText(f("nickname"), '_label -> "Nickname", 'class -> "form-control col-xs-3")

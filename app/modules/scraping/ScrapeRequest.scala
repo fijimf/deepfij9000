@@ -74,8 +74,9 @@ case class TeamDetail(key: String, shortName:String) extends ScrapeRequest[Team]
     val logoUrl = schoolLogo(n)
     val officialUrl = schoolOfficialWebsite(n)
     val officialTwitter = schoolOfficialTwitter(n)
+    val officialFacebook = schoolOfficialFacebook(n)
     val conference = metaInfo.getOrElse("conf", "MISSING")
-    Team(key, shortName, longName, nickname,Some(LogoUrls(logoUrl, logoUrl.map(_.replace("40","70")))), Some(Colors(primaryColor,secondaryColor)  ), Some(SocialData(officialUrl,officialTwitter, None,None)))
+    Team(key, shortName, longName, nickname,Some(LogoUrls(logoUrl, logoUrl.map(_.replace("40","70")))), Some(Colors(primaryColor,secondaryColor)  ), Some(SocialData(officialUrl,officialTwitter, None,officialFacebook)))
 
   }
 }
