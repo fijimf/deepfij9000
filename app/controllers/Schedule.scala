@@ -47,6 +47,13 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   def randomQuote(): String = if (quoteList.isEmpty) "" else quoteList(Random.nextInt(quoteList.size)).quote
 
   def team(key: String) = Action.async {
+    loadTeam(key).map {
+      case Some(tp) => Ok(views.html.teamView(tp))
+      case None => Ok(views.html.resourceNotFound("Team", key))
+    }
+  }
+
+  def loadTeam(key: String): Future[Option[TeamPage]] = {
     for (
       s <- loadSeasonFromDb(2016);
       tm <- loadTeamMap()
@@ -57,11 +64,11 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
             case Some(team) =>
               log.info(season.conferencesByTeam.toString())
               val conf: String = season.conferencesByTeam(key)
-              val tp: TeamPage = TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, randomQuote(), season.gamesByTeam(key), tm, season.conferenceStandings(conf))
-              Ok(views.html.teamView(tp))
-            case None => Ok("Unknown Team")
+              Some(TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, randomQuote(), season.gamesByTeam(key), tm, season.conferenceStandings(conf)))
+
+            case None => Option.empty[TeamPage]
           }
-        case None => Ok("Failed to load season")
+        case None => Option.empty[TeamPage]
       }
     }
   }
@@ -112,7 +119,6 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   def saveTeam = Action { implicit request =>
     form.bindFromRequest.fold(
       formWithErrors => {
-
         BadRequest(views.html.teamEdit(formWithErrors, formWithErrors("name").value.getOrElse("Missing")))
       },
       teamData => {
@@ -161,15 +167,35 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
 
   val quoteList: List[Quote] = {
     implicit val quoteReader: BSONDocumentReader[Quote] = Macros.reader[Quote]
-    val seasonCollection = db.collection[BSONCollection]("quotes")
-    Await.result(seasonCollection.find(BSONDocument()).cursor[Quote](ReadPreference.primaryPreferred).collect[List](), 60.seconds)
+    val quoteCollection = db.collection[BSONCollection]("quotes")
+    Await.result(quoteCollection.find(BSONDocument()).cursor[Quote](ReadPreference.primaryPreferred).collect[List](), 60.seconds)
   }
 
   def index() = play.mvc.Results.TODO
 
   def about() = play.mvc.Results.TODO
 
-  def search(q: String) = play.mvc.Results.TODO
+  def search(q: String) = Action.async { request =>
+    if (q.length < 3) {
+      Future.successful(Ok(views.html.teamList(List.empty[TeamPage])))
+    } else {
+      val query = BSONDocument("$or" -> BSONArray(
+     BSONDocument("name" -> BSONDocument("$regex" -> q , "$options" -> "i")),
+        BSONDocument("nickname" -> BSONDocument("$regex" -> q, "$options" -> "i")),
+        BSONDocument("longMame" -> BSONDocument("$regex" ->q, "$options" -> "i")),
+        BSONDocument("key" -> BSONDocument("$regex" ->q, "$options" -> "i")))
+      )
+
+      val futureTeams: Future[List[Team]] = db.collection[BSONCollection]("teams").find(query).cursor[Team](ReadPreference.primaryPreferred).collect[List]()
+      futureTeams.flatMap(tl => {
+
+        val map: List[Future[Option[TeamPage]]] = tl.map(t => loadTeam(t.key))
+        val sequence: Future[List[Option[TeamPage]]] = Future.sequence(map)
+        sequence.map(_.flatten)
+
+      }).map(tl => Ok(views.html.teamList(tl)))
+    }
+  }
 
   def date(yyyy: Int, mm: Int, dd: Int) = play.mvc.Results.TODO
 

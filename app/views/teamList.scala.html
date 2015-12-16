@@ -1,0 +1,18 @@
+@import models.viewdata.TeamPage
+@(teamList: List[TeamPage])
+
+@base("Teams", None, Some("rgba(192, 192, 255, .75)")) {
+    <div class="container" style="background-color: rgb(247,247,255)" >
+        <table class="ultra-condensed">
+            <tbody>
+            @for( tp <- teamList) {
+                <tr>
+                    <td class="text-left">@tp.team.name @tp.team.nickname</td>
+
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+}
