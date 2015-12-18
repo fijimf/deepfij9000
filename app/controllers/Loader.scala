@@ -9,7 +9,9 @@ import com.google.inject.name.Named
 import models._
 import modules.scraping._
 import org.joda.time.LocalDate
+import org.joda.time.LocalTime
 import play.api.Logger
+import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.{Action, Controller}
 import play.modules.reactivemongo.json.collection.JSONCollection
@@ -44,6 +46,15 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val conferenceMembershipHandler: BSONHandler[BSONDocument, ConferenceMembership] = Macros.handler[ConferenceMembership]
   implicit val seasonHandler: BSONHandler[BSONDocument, Season] = Macros.handler[Season]
   implicit val reader: BSONDocumentReader[Team] = Macros.reader[Team]
+
+  import play.api.Play.current
+
+  import scala.concurrent.duration._
+  var millisUntilFourAM = ((new LocalTime(5,0,0).getMillisOfDay - new LocalTime().getMillisOfDay)+(1000*60*60*24))%(1000*60*60*24)
+
+  Akka.system.scheduler.schedule(millisUntilFourAM.milliseconds, 24.hours) {
+    logger.info("Loading todays results")
+  }
 
   def loadConferenceMaps = Action.async {
 
