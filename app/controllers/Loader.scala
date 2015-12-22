@@ -117,6 +117,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     collection.update(sel, upd, upsert = false)
   }
 
+
+
   def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
     def collection: BSONCollection = db.collection[BSONCollection]("teams")
     collection.drop().flatMap(Unit => collection.bulkInsert(teams.map(teamHandler.write).toStream, ordered = false))
@@ -152,6 +154,60 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     })
     teamMaster.flatMap(saveTeams).map(wr => {
       Ok(wr.toString)
+    })
+  }
+
+
+  def updateGames(academicYear: Int, from: LocalDate, to: LocalDate, games: List[Game]):Future[String] = {
+    def collection: BSONCollection = db.collection[BSONCollection]("seasons")
+    Future.sequence(DateIterator(from, to).map(dt=>{
+      val sel = BSONDocument("academicYear" -> academicYear)
+
+      val upd = BSONDocument("$pull" -> BSONDocument("games" -> BSONDocument("date"->dt)))
+      val upd2 = BSONDocument("$push"-> BSONDocument("games" -> games))
+
+      for (u1<- collection.update(sel, upd, upsert = false);
+      u2<-collection.update(sel,upd2,upsert = false)) yield {
+        u1.toString+"\n"+u2.toString
+      }
+    })).map(_.mkString("\n"))
+  }
+
+  def loadGames(from:LocalDate, to:LocalDate, season:Int):Future[String]= {
+    loadTeamsFromDb().flatMap(tl => {
+      loadAliasMap().map(am => {
+        val keySet: Set[String] = tl.map(_.key).toSet
+        val gameData: List[GameData] = DateIterator(from, to).grouped(10).map(ds => {
+          getGameData(ds).flatten
+        }).flatten.toList
+        logger.info("Aliases:\n" + am.mkString("\n"))
+        val normalizedGameData: List[GameData] = updateMissingTeamKeyByAlias(gameData, keySet, am)
+        val kept = normalizedGameData.filter(gd => keySet.contains(gd.homeTeamKey) && keySet.contains(gd.awayTeamKey))
+        val games = kept.map(gd => Game.fromGameData(gd))
+        updateGames(season, from, to, games)
+      })
+    })
+  }
+
+  def updateMissingTeamKeyByAlias(gameData: List[GameData], keySet:Set[String], aliasMap:Map[String, String]): List[GameData] = {
+    gameData.map(gd => {
+      if (!keySet.contains(gd.homeTeamKey)) {
+        aliasMap.get(gd.homeTeamKey) match {
+          case Some(teamKey) => gd.copy(homeTeamKey = teamKey)
+          case None => gd
+        }
+      } else {
+        gd
+      }
+    }).map(gd => {
+      if (!keySet.contains(gd.awayTeamKey)) {
+        aliasMap.get(gd.awayTeamKey) match {
+          case Some(teamKey) => gd.copy(awayTeamKey = teamKey)
+          case None => gd
+        }
+      } else {
+        gd
+      }
     })
   }
 

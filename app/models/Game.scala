@@ -6,6 +6,9 @@ object Game {
   def fromGameData(gd:GameData, isConfTourn:Boolean, isNeutral:Boolean):Game = {
     Game(gd.date, gd.homeTeamKey, gd.awayTeamKey, gd.result, isNeutral, isConfTourn, gd.tourneyInfo, gd.location )
   }
+  def fromGameData(gd:GameData):Game = {
+    Game(gd.date, gd.homeTeamKey, gd.awayTeamKey, gd.result, isNeutral = false, isConfTournament = false, gd.tourneyInfo, gd.location )
+  }
 }
 
 case class Game(date: LocalDate, homeTeamKey: String, awayTeamKey: String, result: Option[Result], isNeutral: Boolean = false, isConfTournament: Boolean, ncaaTourneyInfo:Option[TourneyInfo], location:Option[String]) {
