@@ -7,6 +7,8 @@ GET         /                               controllers.Schedule.index
 GET         /admin/loadConferenceMap        controllers.Loader.loadConferenceMaps
 GET         /admin/loadGames                controllers.Loader.loadGames
 GET         /admin/loadTeams                controllers.Loader.loadTeams
+GET         /admin/updateGames/:seas/:yyyymmdd   controllers.Loader.updateGames(seas, yyyymmdd)
+
 GET         /admin/aliases                  controllers.MongoLoader.findByAlias(key)
 GET         /admin/editTeam/:key            controllers.Schedule.editTeam(key)
 POST        /admin/saveTeam                 controllers.Schedule.saveTeam

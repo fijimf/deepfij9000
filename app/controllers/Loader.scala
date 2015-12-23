@@ -10,6 +10,7 @@ import models._
 import modules.scraping._
 import org.joda.time.LocalDate
 import org.joda.time.LocalTime
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 import play.api.Logger
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.{JsObject, Json}
@@ -29,7 +30,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
                       (implicit ec: ExecutionContext) extends Controller with MongoController with ReactiveMongoComponents {
   val logger: Logger = Logger(this.getClass)
   implicit val globalTimeout = Timeout(2.minutes)
-  val academicYears: List[Int] = List( 2013, 2014, 2015, 2016)
+  val academicYears: List[Int] = List(2013, 2014, 2015, 2016)
+
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
     def read(time: BSONDateTime) = new LocalDate(time.value)
 
@@ -46,14 +48,18 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val conferenceMembershipHandler: BSONHandler[BSONDocument, ConferenceMembership] = Macros.handler[ConferenceMembership]
   implicit val seasonHandler: BSONHandler[BSONDocument, Season] = Macros.handler[Season]
   implicit val reader: BSONDocumentReader[Team] = Macros.reader[Team]
+  implicit val seasonReader: BSONDocumentReader[Season] = Macros.reader[Season]
 
   import play.api.Play.current
 
   import scala.concurrent.duration._
-  var millisUntilFourAM = ((new LocalTime(5,0,0).getMillisOfDay - new LocalTime().getMillisOfDay)+(1000*60*60*24))%(1000*60*60*24)
+
+  var millisUntilFourAM = ((new LocalTime(5, 0, 0).getMillisOfDay - new LocalTime().getMillisOfDay) + (1000 * 60 * 60 * 24)) % (1000 * 60 * 60 * 24)
 
   Akka.system.scheduler.schedule(millisUntilFourAM.milliseconds, 24.hours) {
     logger.info("Loading todays results")
+    val today = new LocalDate()
+    loadGames(today.minusDays(2),today.plusDays(6), 2016)
   }
 
   def loadConferenceMaps = Action.async {
@@ -118,7 +124,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
 
-
   def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
     def collection: BSONCollection = db.collection[BSONCollection]("teams")
     collection.drop().flatMap(Unit => collection.bulkInsert(teams.map(teamHandler.write).toStream, ordered = false))
@@ -158,24 +163,32 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
 
-  def updateGames(academicYear: Int, from: LocalDate, to: LocalDate, games: List[Game]):Future[String] = {
+
+  def updateGames(academicYear: Int, from: LocalDate, to: LocalDate, games: List[Game]): Future[String] = {
     def collection: BSONCollection = db.collection[BSONCollection]("seasons")
-    Future.sequence(DateIterator(from, to).map(dt=>{
-      val sel = BSONDocument("academicYear" -> academicYear)
+    val selector = BSONDocument("academicYear" -> academicYear)
+    val future: Future[Option[Season]] = collection.find(selector).one[Season](ReadPreference.primaryPreferred)
 
-      val upd = BSONDocument("$pull" -> BSONDocument("games" -> BSONDocument("date"->dt)))
-      val upd2 = BSONDocument("$push"-> BSONDocument("games" -> games))
-
-      for (u1<- collection.update(sel, upd, upsert = false);
-      u2<-collection.update(sel,upd2,upsert = false)) yield {
-        u1.toString+"\n"+u2.toString
-      }
-    })).map(_.mkString("\n"))
+    future.flatMap {
+      case Some(season) =>
+        val newGameList = DateIterator(from, to).foldLeft[List[Game]](season.games)((gs: List[Game], dt: LocalDate) => {
+          gs.filter(_.date != dt) ++ games.filter(_.date == dt)
+        })
+        val eventualWriteResult = collection.update(selector, BSONDocument("$set" -> BSONDocument("games" -> newGameList)))
+        eventualWriteResult.map(_.toString)
+      case None =>
+        Future.successful("Season not found")
+    }
   }
 
-  def loadGames(from:LocalDate, to:LocalDate, season:Int):Future[String]= {
+  def updateGames(academicYear:String, yyyymmdd:String)= Action.async {
+    val today = DateTimeFormat.forPattern("yyyyMMdd").parseLocalDate(yyyymmdd)
+    loadGames(today.minusDays(2), today.plusDays(7), academicYear.toInt).map(res=>Ok(res.toString))
+  }
+
+  def loadGames(from: LocalDate, to: LocalDate, season: Int): Future[String] = {
     loadTeamsFromDb().flatMap(tl => {
-      loadAliasMap().map(am => {
+      loadAliasMap().flatMap(am => {
         val keySet: Set[String] = tl.map(_.key).toSet
         val gameData: List[GameData] = DateIterator(from, to).grouped(10).map(ds => {
           getGameData(ds).flatten
@@ -189,7 +202,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     })
   }
 
-  def updateMissingTeamKeyByAlias(gameData: List[GameData], keySet:Set[String], aliasMap:Map[String, String]): List[GameData] = {
+  def updateMissingTeamKeyByAlias(gameData: List[GameData], keySet: Set[String], aliasMap: Map[String, String]): List[GameData] = {
     gameData.map(gd => {
       if (!keySet.contains(gd.homeTeamKey)) {
         aliasMap.get(gd.homeTeamKey) match {
@@ -218,7 +231,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
         val keySet: Set[String] = tl.map(_.key).toSet
 
         val gameData: Map[Int, List[GameData]] = academicYears.map(y => y -> {
-          DateIterator(new LocalDate(y-1, 11, 1), new LocalDate(y, 4, 30)).grouped(10).map(ds => {
+          DateIterator(new LocalDate(y - 1, 11, 1), new LocalDate(y, 4, 30)).grouped(10).map(ds => {
             getGameData(ds).flatten
           }).flatten
         }.toList).toMap
