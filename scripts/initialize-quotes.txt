@@ -9,5 +9,8 @@ db.quotes.insert([
 {"quote":"We walk the streets at night/We go where eagles dare."},
 {"quote":"Yankee detectives are always on the TV/Cause killers in America work seven days a week."},
 {"quote":"We have to pay for everything/But some things are for free/We live on blood/We are Sparta F.C."},
-{"quote":"They smelled of pubs and Wormwood Scrubs and too many right wing meetings"}
+{"quote":"They smelled of pubs and Wormwood Scrubs and too many right wing meetings"},
+{"quote":"I love it when you call me Big Poppa"},
+{"quote":"Now troubles are many, they're as deep as a well."}
+
 ])

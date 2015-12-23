@@ -3,12 +3,13 @@
 
 @base("Teams", None, Some("rgba(192, 192, 255, .75)")) {
     <div class="container" style="background-color: rgb(247,247,255)" >
-        <table class="ultra-condensed">
+        <table class="table team-list-table">
             <tbody>
             @for( tp <- teamList) {
                 <tr>
-                    <td class="text-left">@tp.team.name @tp.team.nickname</td>
-
+                    <td><img src='@tp.team.logos.flatMap(_.smallUrl).getOrElse("#")' /></td>
+                    <td class="text-left"><a href=@controllers.routes.Schedule.team(tp.team.key)>@tp.team.name @tp.team.nickname</a></td>
+                    <td class="text-left">@tp.record._1 - @tp.record._2, @tp.confRecord._1 - @tp.confRecord._2 @tp.conference</td>
                 </tr>
             }
             </tbody>
