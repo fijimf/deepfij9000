@@ -64,7 +64,7 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
             case Some(team) =>
               log.info(season.conferencesByTeam.toString())
               val conf: String = season.conferencesByTeam(key)
-              Some(TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, randomQuote(), season.gamesByTeam(key), tm, season.conferenceStandings(conf)))
+              Some(TeamPage(team, season.overallRecord(key), season.confRecord(key), conf, randomQuote(), season.gamesByTeam(key), tm, season.conferenceStandings(conf), season.specRecords(key)))
 
             case None => Option.empty[TeamPage]
           }

@@ -8,19 +8,17 @@ import util.DateIterator
 case class Season(academicYear: Int, games: List[Game], conferenceMap: List[ConferenceMembership]) {
   def verify(teams: Map[String, Team]): List[String] = {
     val teamSet: Set[String] = conferenceMap.map(_.teamKey).toSet
-     List(
-     "Academic year is "+academicYear,
-     "Number of games is "+games.size,
-     "Number of games with results is "+ games.filter(_.result.isDefined).size,
-     "Number of teams mapped to conferences is "+conferenceMap.size  ,
-     "Number of conferences is "+conferenceMap.map(_.conferenceKey).distinct.size,
-     "Teams not mapped to conferences: "+teams.keys.filter(tk=> !teamSet.contains(tk)).mkString(", "),
-     "Teams with no games "+ teamSet.filter(tk=>gamesByTeam(tk).isEmpty)
+    List(
+      "Academic year is " + academicYear,
+      "Number of games is " + games.size,
+      "Number of games with results is " + games.filter(_.result.isDefined).size,
+      "Number of teams mapped to conferences is " + conferenceMap.size,
+      "Number of conferences is " + conferenceMap.map(_.conferenceKey).distinct.size,
+      "Teams not mapped to conferences: " + teams.keys.filter(tk => !teamSet.contains(tk)).mkString(", "),
+      "Teams with no games " + teamSet.filter(tk => gamesByTeam(tk).isEmpty)
 
 
-
-
-     )
+    )
   }
 
   val conferences = conferenceMap.groupBy(_.conferenceKey).mapValues(_.map(_.teamKey))
@@ -46,6 +44,14 @@ case class Season(academicYear: Int, games: List[Game], conferenceMap: List[Conf
 
   def calcRecord(t: String, list: List[Game]): (Int, Int) = {
     (list.count(_.isWinner(t)), list.count(_.isLoser(t)))
+  }
+
+  def calcRecord(label: String, selector: List[Game] => List[Game], t: String, list: List[Game]): (String, Int, Int, Option[Double]) = {
+    val record = calcRecord(t, selector(list))
+    record match {
+      case (0, 0) => (label, 0, 0, None)
+      case (w, l) => (label, w, l, Some(w.toDouble / (w + l).toDouble))
+    }
   }
 
   def overallRecord(t: String): (Int, Int) = {
@@ -79,6 +85,35 @@ case class Season(academicYear: Int, games: List[Game], conferenceMap: List[Conf
     conferences.get(c).map(ts => {
       ts.map(t => (t, confRecord(t), overallRecord(t))).sorted
     }).getOrElse(List.empty[(String, (Int, Int), (Int, Int))])
+  }
+
+  def specRecords(t: String): List[(String, Int, Int, Option[Double])] = {
+    val gs: List[Game] = gamesByTeam(t).filter(_.result.isDefined)
+    List(
+      calcRecord("Overall", (g) => g, t, gs),
+      calcRecord("Conference", _.filter(g => isConferenceGame(g)), t, gs),
+      calcRecord("Non-conference", _.filter(g => !isConferenceGame(g)), t, gs),
+      calcRecord("Home", _.filter(g => g.homeTeamKey == t && !g.isNeutral), t, gs),
+      calcRecord("Away", _.filter(g => g.awayTeamKey == t && !g.isNeutral), t, gs),
+      calcRecord("Neutral", _.filter(g => g.isNeutral), t, gs),
+      calcRecord("Overtime", _.filter(g => g.result.get.periods > 2), t, gs),
+      calcRecord("Margin < 5", _.filter(g => g.result.get.margin < 5), t, gs),
+      calcRecord("Margin > 15", _.filter(g => g.result.get.margin > 15), t, gs),
+      calcRecord("Scoring < 60 ", _.filter(g => g.score(t).get <= 60), t, gs),
+      calcRecord("Scoring > 60 ", _.filter(g => g.score(t).get > 60), t, gs),
+      calcRecord("Scoring < 80", _.filter(g => g.score(t).get <= 80), t, gs),
+      calcRecord("Scoring > 80", _.filter(g => g.score(t).get > 80), t, gs),
+      calcRecord("Scoring < 100", _.filter(g => g.score(t).get <= 100), t, gs),
+      calcRecord("Scoring > 100", _.filter(g => g.score(t).get > 100), t, gs),
+      calcRecord("Last 5", _.filter(g => g.result.isDefined).takeRight(5), t, gs),
+      calcRecord("Last 10", _.filter(g => g.result.isDefined).takeRight(10), t, gs),
+      calcRecord("November", _.filter(g => g.date.getMonthOfYear == 11), t, gs),
+      calcRecord("December", _.filter(g => g.date.getMonthOfYear == 12), t, gs),
+      calcRecord("January", _.filter(g => g.date.getMonthOfYear == 1), t, gs),
+      calcRecord("February", _.filter(g => g.date.getMonthOfYear == 2), t, gs),
+      calcRecord("March", _.filter(g => g.date.getMonthOfYear == 3), t, gs)
+
+    )
   }
 
 

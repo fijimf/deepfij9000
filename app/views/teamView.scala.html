@@ -29,11 +29,11 @@
                 @for( g <- tp.schedule) {
                     <tr>
                         <td class="text-center"><strong>@g.wlKey(tp.team)</strong></td>
-                        <td class="text-center">@g.dateStr()</td>
+                        <td class="text-center ">@g.dateStr()</td>
                         <td class="text-left">@g.atVs(tp.team)
                         <a href="/deepfij/teams/@g.opponent(tp.team)"> @tp.teamMap.get(g.opponent(tp.team).getOrElse("")).map(_.name).getOrElse("") </a>
                         </td>
-                        <td class="text-right">
+                        <td class="text-right ">
                         @g.result.map(r => r.homeScore.toString + " - " + r.awayScore.toString)
                         </td>
                     </tr>
@@ -44,20 +44,36 @@
         <div class="col-md-4">
             <h4 >@tp.conference Standings</h4>
             <table class="ultra-condensed">
-                <thead><tr><th></th><th colspan="2">Conference</th><th colspan="2">Overall</th></tr></thead>
+                <thead><tr><th></th><th colspan="2" class="text-center">Conference</th><th colspan="2" class="text-center">Overall</th></tr></thead>
                 <tbody>
                 @for( line <- tp.standings) {
                     <tr>
-                        <td class="text-left">
+                        <td class="text-left col-xs-5">
                             <a href="/deepfij/teams/@line._1"> @tp.teamMap.get(line._1).map(_.name).getOrElse("") </a>
                         </td>
-                        <td class="text-right">@line._2._1</td>
-                        <td class="text-right">@line._2._2</td>
-                        <td class="text-right">@line._3._1</td>
-                        <td class="text-right">@line._3._2</td>
+                        <td class="text-right col-xs-2">@line._2._1</td>
+                        <td class="text-right col-xs-1">@line._2._2</td>
+                        <td class="text-right col-xs-2">@line._3._1</td>
+                        <td class="text-right col-xs-1">@line._3._2</td>
                     </tr>
                 }
                 </tbody>
+            </table>
+            <h4>Categorical Records</h4>
+            <table class="ultra-condensed">
+            <thead><tr><th></th><th colspan="2" class="text-center">Record</th><th class="text-center">Pct</th></tr></thead>
+            <tbody>
+            @for( line <- tp.specRecords) {
+                <tr>
+                    <td class="text-left col-xs-5">
+                        @line._1
+                    </td>
+                    <td class="text-right col-xs-2">@line._2</td>
+                    <td class="text-right col-xs-2">@line._3</td>
+                    <td class="text-right col-xs-3">@line._4.map(p=>"%5.4f".format(p)).getOrElse("-")</td>
+                </tr>
+            }
+            </tbody>
             </table>
         </div>
     </div>
