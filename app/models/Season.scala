@@ -1,7 +1,7 @@
 
 package models
 
-import java.time.LocalDate
+import org.joda.time.LocalDate
 
 import util.DateIterator
 
@@ -11,7 +11,7 @@ case class Season(academicYear: Int, games: List[Game], conferenceMap: List[Conf
     List(
       "Academic year is " + academicYear,
       "Number of games is " + games.size,
-      "Number of games with results is " + games.filter(_.result.isDefined).size,
+      "Number of games with results is " + games.count(_.result.isDefined),
       "Number of teams mapped to conferences is " + conferenceMap.size,
       "Number of conferences is " + conferenceMap.map(_.conferenceKey).distinct.size,
       "Teams not mapped to conferences: " + teams.keys.filter(tk => !teamSet.contains(tk)).mkString(", "),
