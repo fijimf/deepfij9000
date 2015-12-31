@@ -34,3 +34,37 @@ object Wins extends Analyzer[Int] {
   }
 }
 
+case object WonLostModel {
+  def apply(season:Season) = {
+    def relevantGames(t: String, d: LocalDate) = season.gamesByTeam(t).filter(!_.date.isAfter(d))
+    val wins = (t: String, d: LocalDate) => Some(relevantGames(t,d).count(_.isWinner(t)))
+    val losses = (t: String, d: LocalDate) => Some(relevantGames(t,d).count(_.isLoser(t)))
+    val wp = (t: String, d: LocalDate) => (wins(t,d), losses(t,d)) match {
+      case (Some(w), Some(l)) if w + l > 0 => Some(w/(w+l))
+      case _ => None
+    }
+    val winStreak = (t: String, d: LocalDate) => Some(relevantGames(t,d).reverse.dropWhile(_.result.isEmpty).takeWhile(_.isWinner(t)))
+    val lossStreak = (t: String, d: LocalDate) => Some(relevantGames(t,d).reverse.dropWhile(_.result.isEmpty).takeWhile(_.isLoser(t)))
+    List(wins, losses,wp, winStreak, lossStreak)
+  }
+}
+
+case object ScoringModel {
+  def apply(season:Season) = {
+    def relevantGames(t: String, d: LocalDate) = season.gamesByTeam(t).filter(!_.date.isAfter(d))
+    val oppScore = (t: String, d: LocalDate) => {
+      val map: List[Int] = relevantGames(t, d).flatMap(g => g.opponent(t).flatMap(opp => g.score(opp)))
+      Some(DescriptiveStatistics(map))
+    }
+    val losses = (t: String, d: LocalDate) => Some(relevantGames(t,d).count(.isLoser(t)))
+    val wp = (t: String, d: LocalDate) => (wins(t,d), losses(t,d)) match {
+      case (Some(w), Some(l)) if w + l > 0 => Some(w/(w+l))
+      case _ => None
+    }
+    val winStreak = (t: String, d: LocalDate) => Some(relevantGames(t,d).reverse.dropWhile(.result.isEmpty).takeWhile(.isWinner(t)))
+    val lossStreak = (t: String, d: LocalDate) => Some(relevantGames(t,d).reverse.dropWhile(.result.isEmpty).takeWhile(.isLoser(t)))
+    List(wins, losses,wp, winStreak, lossStreak)
+  }
+
+}
+

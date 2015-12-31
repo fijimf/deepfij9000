@@ -13,6 +13,7 @@ libraryDependencies ++= Seq(
   specs2 % Test
 )
 libraryDependencies += "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2.1"
+libraryDependencies += "org.apache.commons" % "commons-math3" % "3.5"
 libraryDependencies += "org.reactivemongo" %% "play2-reactivemongo" % "0.11.7.play24"
 libraryDependencies += "org.webjars" % "bootstrap" % "3.3.6"
 libraryDependencies += "org.webjars" % "jquery" % "1.9.1"
