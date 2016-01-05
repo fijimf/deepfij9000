@@ -6,6 +6,7 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
+import controllers.analysis.{Analyzer, ScoringModel, WonLostModel}
 import models._
 import modules.scraping._
 import org.joda.time.LocalDate
@@ -38,6 +39,9 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     def write(jdtime: LocalDate) = BSONDateTime(jdtime.toDate.getTime)
   }
 
+  implicit val modelResultHandler: BSONHandler[BSONDocument, ModelResult] = Macros.handler[ModelResult]
+  implicit val modelSeriesHandler: BSONHandler[BSONDocument, ModelPop] = Macros.handler[ModelPop]
+  implicit val modelValueHandler: BSONHandler[BSONDocument, ModelValue] = Macros.handler[ModelValue]
   implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]
   implicit val logoUrlsHandler: BSONHandler[BSONDocument, LogoUrls] = Macros.handler[LogoUrls]
   implicit val socialDataHandler: BSONHandler[BSONDocument, SocialData] = Macros.handler[SocialData]
@@ -56,16 +60,18 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
   var millisUntilFourAM = ((new LocalTime(5, 0, 0).getMillisOfDay - new LocalTime().getMillisOfDay) + (1000 * 60 * 60 * 24)) % (1000 * 60 * 60 * 24)
 
+
   Akka.system.scheduler.schedule(millisUntilFourAM.milliseconds, 24.hours) {
     logger.info("Loading todays results")
     val today = new LocalDate()
     loadGames(today.minusDays(2),today.plusDays(6), 2016)
+    saveModels(List(WonLostModel, ScoringModel), 2016)
   }
 
   def loadConferenceMaps = Action.async {
 
     val aliasMap: Future[Map[String, String]] = loadAliasMap()
-    logger.info("Requested alias map.");
+    logger.info("Requested alias map.")
 
     val confAlignmentByYear: Map[Int, Map[String, List[String]]] = academicYears.map(yr => {
       yr -> aacToBigEastHack(Await.result(conferenceAlignmentByYear(yr), 1.minute))
@@ -365,4 +371,47 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().mapTo[List[Team]]
 
   }
+
+  def loadSeasonFromDb(academicYear: Int): Future[Option[Season]] = {
+    val seasonCollection = db.collection[BSONCollection]("seasons")
+    seasonCollection.find(BSONDocument("academicYear" -> academicYear)).cursor[Season](ReadPreference.primaryPreferred).headOption
+  }
+
+  def saveModels(analyzers: List[Analyzer], academicYear: Int): Unit = {
+    val modelCollection: BSONCollection = db.collection[BSONCollection]("modelResults")
+
+    runModels(analyzers, academicYear).map(ml => {
+      ml.foreach(modr => {
+        val selector = BSONDocument("name" -> modr.name)
+        val future: Future[Option[ModelResult]] = modelCollection.find(selector).one[ModelResult](ReadPreference.primaryPreferred)
+
+        future.flatMap {
+          case Some(modelResult) =>
+            val eventualWriteResult = modelCollection.update(selector, BSONDocument("$set" -> BSONDocument("series" -> modr.series)))
+            eventualWriteResult.map(_.toString)
+          case None =>
+            val eventualWriteResult = modelCollection.insert(modr)
+            eventualWriteResult.map(_.toString)
+        }
+      }
+      )
+    })
+  }
+
+  def runModels(analyzers: List[Analyzer], academicYear: Int): Future[List[ModelResult]] = {
+    loadSeasonFromDb(2016).map {
+      case Some(s) =>
+        analyzers.flatMap(az => {
+          az(s).map { case (label, fn) => ModelResult(label, byDates(s, fn)) }
+        })
+      case None => List.empty
+    }
+  }
+
+  def byDates(s: Season, fn: (String, LocalDate) => Option[Any]) =
+    s.allDates.map(d => ModelPop(d,byTeams(s, fn, d)))
+
+  def byTeams(s: Season, fn: (String, LocalDate) => Option[Any], d: LocalDate) =
+    s.allTeams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map(tup=>ModelValue(tup._1, tup._2.get))
+
 }
