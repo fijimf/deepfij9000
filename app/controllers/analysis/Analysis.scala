@@ -18,11 +18,11 @@ trait Analysis[T] {
 
 
 trait Analyzer {
-  def apply(season: Season):List[(String, (String, LocalDate) => Option[Any])]
+  def apply(season: Season):List[(String, Boolean, Boolean, (String, LocalDate) => Option[Any])]
 }
 
 case object WonLostModel extends Analyzer {
-  def apply(season: Season):List[(String, (String, LocalDate) => Option[Any])] = {
+  def apply(season: Season):List[(String,Boolean, Boolean, (String, LocalDate) => Option[Any])] = {
     def relevantGames(t: String, d: LocalDate) = season.gamesByTeam(t).filter(!_.date.isAfter(d))
     val wins = (t: String, d: LocalDate) => Some(relevantGames(t, d).count(_.isWinner(t)))
     val losses = (t: String, d: LocalDate) => Some(relevantGames(t, d).count(_.isLoser(t)))
@@ -32,12 +32,18 @@ case object WonLostModel extends Analyzer {
     }
     val winStreak = (t: String, d: LocalDate) => Some(relevantGames(t, d).reverse.dropWhile(_.result.isEmpty).takeWhile(_.isWinner(t)))
     val lossStreak = (t: String, d: LocalDate) => Some(relevantGames(t, d).reverse.dropWhile(_.result.isEmpty).takeWhile(_.isLoser(t)))
-    List("wins" -> wins, "losses" -> losses, "wp" -> wp, "winStreak" -> winStreak, "lossStreak" -> lossStreak)
+    List(
+      ("wins", true, true, wins),
+      ("losses" , false, true, losses),
+      ("wp", true, true,  wp),
+      ("winStreak" , true, true,  winStreak),
+      ("lossStreak", false, true,  lossStreak)
+    )
   }
 }
 
 case object ScoringModel extends Analyzer {
-  def apply(season: Season):List[(String, (String, LocalDate) => Option[Any])] = {
+  def apply(season: Season):List[(String, Boolean, Boolean, (String, LocalDate) => Option[Any])] = {
     def relevantGames(t: String, d: LocalDate) = season.gamesByTeam(t).filter(!_.date.isAfter(d))
     val score = (t: String, d: LocalDate) => {
       Some(SummaryStats(relevantGames(t, d).flatMap(g => g.score(t))))
@@ -61,13 +67,13 @@ case object ScoringModel extends Analyzer {
       "skew" -> { ss: SummaryStats => ss.skewness },
       "kurt" -> { ss: SummaryStats => ss.kurtosis }
     )
-    val fs: List[(String, (String, LocalDate) => Option[SummaryStats])] = List(
-      "Score" -> (score(_: String, _: LocalDate)),
-      "OppScore" -> (score(_: String, _: LocalDate)),
-      "Margin" -> (score(_: String, _: LocalDate))
+    val fs: List[(String, Boolean, (String, LocalDate) => Option[SummaryStats])] = List(
+      ("Score", true, score(_: String, _: LocalDate)),
+      ("OppScore", false, oppScore(_: String, _: LocalDate)),
+      ("Margin", true, margin(_: String, _: LocalDate))
     )
 
-    for (f <- fs; g <- gs) yield (g._1 + f._1) -> extract(f._2, g._2)
+    for (f <- fs; g <- gs) yield (g._1 + f._1, f._2, true, extract(f._3, g._2))
   }
 
   def extract[K: Numeric](f: (String, LocalDate) => Option[SummaryStats], g: (SummaryStats) => K): (String, LocalDate) => Option[Double] = {

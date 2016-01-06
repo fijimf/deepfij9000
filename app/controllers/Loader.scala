@@ -53,6 +53,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   implicit val seasonHandler: BSONHandler[BSONDocument, Season] = Macros.handler[Season]
   implicit val reader: BSONDocumentReader[Team] = Macros.reader[Team]
   implicit val seasonReader: BSONDocumentReader[Season] = Macros.reader[Season]
+  implicit val modelResultReader: BSONDocumentReader[ModelResult] = Macros.reader[ModelResult]
+  implicit val modelResultWriter: BSONDocumentWriter[ModelResult] = Macros.writer[ModelResult]
 
   import play.api.Play.current
 
@@ -64,8 +66,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   Akka.system.scheduler.schedule(millisUntilFourAM.milliseconds, 24.hours) {
     logger.info("Loading todays results")
     val today = new LocalDate()
-    loadGames(today.minusDays(2),today.plusDays(6), 2016)
+    loadGames(today.minusDays(2), today.plusDays(6), 2016)
     saveModels(List(WonLostModel, ScoringModel), 2016)
+  }
+
+  def runModelsNow = Action.async {
+    saveModels(List(WonLostModel, ScoringModel), 2016)
+    Future.successful(Ok("Loaded model data"))
   }
 
   def loadConferenceMaps = Action.async {
@@ -169,7 +176,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
 
-
   def updateGames(academicYear: Int, from: LocalDate, to: LocalDate, games: List[Game]): Future[String] = {
     def collection: BSONCollection = db.collection[BSONCollection]("seasons")
     val selector = BSONDocument("academicYear" -> academicYear)
@@ -187,9 +193,9 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     }
   }
 
-  def updateGames(academicYear:String, yyyymmdd:String)= Action.async {
+  def updateGames(academicYear: String, yyyymmdd: String) = Action.async {
     val today = DateTimeFormat.forPattern("yyyyMMdd").parseLocalDate(yyyymmdd)
-    loadGames(today.minusDays(2), today.plusDays(7), academicYear.toInt).map(res=>Ok(res.toString))
+    loadGames(today.minusDays(2), today.plusDays(7), academicYear.toInt).map(res => Ok(res.toString))
   }
 
   def loadGames(from: LocalDate, to: LocalDate, season: Int): Future[String] = {
@@ -402,16 +408,18 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     loadSeasonFromDb(2016).map {
       case Some(s) =>
         analyzers.flatMap(az => {
-          az(s).map { case (label, fn) => ModelResult(label, byDates(s, fn)) }
+          az(s).map { case (label, hib, isNum, fn) => ModelResult(label, hib, isNum, byDates(s, isNum, fn)) }
         })
       case None => List.empty
     }
   }
 
-  def byDates(s: Season, fn: (String, LocalDate) => Option[Any]) =
-    s.allDates.map(d => ModelPop(d,byTeams(s, fn, d)))
+  def byDates(s: Season, isNum: Boolean, fn: (String, LocalDate) => Option[Any]) =
+    s.allDates.map(d => ModelPop(d, byTeams(s, isNum, fn, d)))
 
-  def byTeams(s: Season, fn: (String, LocalDate) => Option[Any], d: LocalDate) =
-    s.allTeams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map(tup=>ModelValue(tup._1, tup._2.get))
-
+  def byTeams(s: Season, isNum: Boolean, fn: (String, LocalDate) => Option[Any], d: LocalDate) =
+    if (isNum)
+      s.allTeams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map(tup => ModelValue(tup._1, tup._2.get.asInstanceOf[Double]))
+    else
+      s.allTeams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map(tup => ModelValue(tup._1, tup._2.get.toString))
 }
