@@ -20,7 +20,7 @@ import play.modules.reactivemongo.json.collection.JSONCollection
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.{MultiBulkWriteResult, UpdateWriteResult}
+import reactivemongo.api.commands.{WriteResult, MultiBulkWriteResult, UpdateWriteResult}
 import reactivemongo.bson._
 import util.DateIterator
 
@@ -71,8 +71,9 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def runModelsNow = Action.async {
-    saveModels(List(WonLostModel, ScoringModel), 2016)
-    Future.successful(Ok("Loaded model data"))
+    saveModels(List(WonLostModel, ScoringModel), 2016).map(lwr => {
+      Ok(lwr.map(_.message).mkString("\n"))
+    })
   }
 
   def loadConferenceMaps = Action.async {
@@ -383,43 +384,65 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     seasonCollection.find(BSONDocument("academicYear" -> academicYear)).cursor[Season](ReadPreference.primaryPreferred).headOption
   }
 
-  def saveModels(analyzers: List[Analyzer], academicYear: Int): Unit = {
+  def saveModels(analyzers: List[Analyzer], academicYear: Int): Future[List[WriteResult]] = {
     val modelCollection: BSONCollection = db.collection[BSONCollection]("modelResults")
 
-    runModels(analyzers, academicYear).map(ml => {
-      ml.foreach(modr => {
+    runModels(analyzers, academicYear).flatMap(ml => {
+      val lfwr: List[Future[WriteResult]] = ml.map(modr => {
+        logger.info("Saving or update model " + modr.name)
         val selector = BSONDocument("name" -> modr.name)
         val future: Future[Option[ModelResult]] = modelCollection.find(selector).one[ModelResult](ReadPreference.primaryPreferred)
 
         future.flatMap {
           case Some(modelResult) =>
-            val eventualWriteResult = modelCollection.update(selector, BSONDocument("$set" -> BSONDocument("series" -> modr.series)))
-            eventualWriteResult.map(_.toString)
+            logger.info("Updating " + modr.name)
+            modelCollection.update(selector, BSONDocument("$set" -> BSONDocument("series" -> modr.series)))
+
           case None =>
-            val eventualWriteResult = modelCollection.insert(modr)
-            eventualWriteResult.map(_.toString)
+            logger.info("Saving " + modr.name)
+            modelCollection.insert(modr)
+
         }
-      }
-      )
+      })
+      Future.sequence(lfwr)
     })
   }
 
   def runModels(analyzers: List[Analyzer], academicYear: Int): Future[List[ModelResult]] = {
     loadSeasonFromDb(2016).map {
+
       case Some(s) =>
+        logger.info("Loaded season")
         analyzers.flatMap(az => {
-          az(s).map { case (label, hib, isNum, fn) => ModelResult(label, hib, isNum, byDates(s, isNum, fn)) }
+          logger.info(az.toString)
+          az(s).map { case (label, hib, isNum, fn) =>
+            logger.info(label)
+            ModelResult(label, hib, isNum, byDates(s, isNum, fn))
+          }
         })
-      case None => List.empty
+      case None =>
+        logger.info("Could not find season")
+        List.empty
     }
   }
 
-  def byDates(s: Season, isNum: Boolean, fn: (String, LocalDate) => Option[Any]) =
-    s.allDates.map(d => ModelPop(d, byTeams(s, isNum, fn, d)))
+  def byDates(s: Season, isNum: Boolean, fn: (String, LocalDate) => Option[Any]): List[ModelPop] =
+    s.allDates.map(d => {
+      logger.info("Date is " + d.toString())
+      ModelPop(d, byTeams(s, isNum, fn, d))
+    })
 
-  def byTeams(s: Season, isNum: Boolean, fn: (String, LocalDate) => Option[Any], d: LocalDate) =
-    if (isNum)
-      s.allTeams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map(tup => ModelValue(tup._1, tup._2.get.asInstanceOf[Double]))
-    else
-      s.allTeams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map(tup => ModelValue(tup._1, tup._2.get.toString))
+  def byTeams(s: Season, isNum: Boolean, fn: (String, LocalDate) => Option[Any], d: LocalDate): List[ModelValue] = {
+    val teams: List[String] = s.allTeams
+
+    teams.map(t => t -> fn(t, d)).filter(_._2.isDefined).map {
+      case (t, Some(v)) => v match {
+        case n: Integer => ModelValue(t, n.toDouble)
+        case x: Double => ModelValue(t, x)
+        case s: String => ModelValue(t, s)
+        case q: Any => ModelValue(t, q.toString)
+      }
+      case _ => throw new RuntimeException()
+    }
+  }
 }

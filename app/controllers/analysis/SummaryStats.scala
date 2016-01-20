@@ -4,7 +4,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 object SummaryStats {
   def apply[T : Numeric](data: Seq[T]):SummaryStats  = {
     import Numeric.Implicits._
-    SummaryStats(data.map(_.toDouble))
+    SummaryStats(new DescriptiveStatistics(data.map(_.toDouble).toArray))
   }
 
   def apply(ds: DescriptiveStatistics):SummaryStats = {
