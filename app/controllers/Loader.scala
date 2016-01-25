@@ -7,6 +7,7 @@ import akka.pattern._
 import akka.util.Timeout
 import com.google.inject.name.Named
 import controllers.analysis.{Analyzer, ScoringModel, WonLostModel}
+import controllers.dao.{AliasDao, TeamDao}
 import models._
 import modules.scraping._
 import org.joda.time.LocalDate
@@ -32,6 +33,9 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   val logger: Logger = Logger(this.getClass)
   implicit val globalTimeout = Timeout(2.minutes)
   val academicYears: List[Int] = List(2013, 2014, 2015, 2016)
+
+  val teamDao = TeamDao(db)
+  val aliasDao = AliasDao(db)
 
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, LocalDate] {
     def read(time: BSONDateTime) = new LocalDate(time.value)
@@ -77,21 +81,14 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def loadConferenceMaps = Action.async {
-
-    val aliasMap: Future[Map[String, String]] = loadAliasMap()
-    logger.info("Requested alias map.")
-
     val confAlignmentByYear: Map[Int, Map[String, List[String]]] = academicYears.map(yr => {
       yr -> aacToBigEastHack(Await.result(conferenceAlignmentByYear(yr), 1.minute))
     }).toMap
 
-    val teamNameMap =
-      db.collection[BSONCollection]("teams")
-        .find(BSONDocument()).cursor[Team].collect[List]()
-        .map(p => p.foldLeft(Map.empty[String, String])((map: Map[String, String], team: Team) => map + (team.name -> team.key)))
+
     val normalizedMap: Future[Map[Int, Map[String, List[String]]]] = for (
-      am <- aliasMap;
-      teamNames <- teamNameMap
+      am <- aliasDao.loadAliasMap();
+      teamNames <- teamDao.loadTeamNameMap()
     ) yield {
       confAlignmentByYear.mapValues(_.mapValues(_.flatMap(s => {
         teamNames.get(s).orElse(am.get(s))
@@ -138,19 +135,13 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
 
-  def saveTeams(teams: List[Team]): Future[MultiBulkWriteResult] = {
-    def collection: BSONCollection = db.collection[BSONCollection]("teams")
-    collection.drop().flatMap(Unit => collection.bulkInsert(teams.map(teamHandler.write).toStream, ordered = false))
-  }
 
   def loadTeams = Action.async {
     logger.info("Loading preliminary team keys.")
     val teamShortNames: Future[Map[String, String]] = masterShortName(List(1, 2, 3, 4, 5, 6, 7), 145)
-    val aliasMap: Future[Map[String, String]] = loadAliasMap()
-
     val teamShortNames1 = for (
       tsn <- teamShortNames;
-      am <- aliasMap
+      am <- aliasDao.loadAliasMap()
     ) yield {
       logger.info("Loaded alias map: " + am.keys.mkString(", "))
       tsn.map((tup: (String, String)) => {
@@ -171,7 +162,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
         })), 600.seconds)
       }).flatten.toList
     })
-    teamMaster.flatMap(saveTeams).map(wr => {
+    teamMaster.flatMap(teamDao.saveTeams).map(wr => {
       Ok(wr.toString)
     })
   }
@@ -200,8 +191,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def loadGames(from: LocalDate, to: LocalDate, season: Int): Future[String] = {
-    loadTeamsFromDb().flatMap(tl => {
-      loadAliasMap().flatMap(am => {
+    teamDao.loadAll().flatMap(tl => {
+      aliasDao.loadAliasMap().flatMap(am => {
         val keySet: Set[String] = tl.map(_.key).toSet
         val gameData: List[GameData] = DateIterator(from, to).grouped(10).map(ds => {
           getGameData(ds).flatten
@@ -239,8 +230,8 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
 
   def loadGames = Action.async {
-    loadTeamsFromDb().flatMap(tl => {
-      loadAliasMap().flatMap(am => {
+    teamDao.loadAll().flatMap(tl => {
+      aliasDao.loadAliasMap().flatMap(am => {
         val keySet: Set[String] = tl.map(_.key).toSet
 
         val gameData: Map[Int, List[GameData]] = academicYears.map(y => y -> {
@@ -358,26 +349,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
     }).map(_.toMap)
   }
 
-  def loadAliasMap(): Future[Map[String, String]] = {
-    import play.modules.reactivemongo.json._
 
-    val aliasCollection = db.collection[JSONCollection]("aliases")
-    aliasCollection.find(Json.obj()).cursor[JsObject](ReadPreference.primaryPreferred).collect[List]().map(list => {
-      list.map(jso => {
-        val a: String = jso.value("alias").as[String]
-        val k: String = jso.value("key").as[String]
-        a -> k
-      }).toMap
-    })
-  }
-
-  def loadTeamsFromDb(): Future[List[Team]] = {
-
-
-    val teamCollection = db.collection[BSONCollection]("teams")
-    teamCollection.find(BSONDocument()).cursor[Team](ReadPreference.primaryPreferred).collect[List]().mapTo[List[Team]]
-
-  }
 
   def loadSeasonFromDb(academicYear: Int): Future[Option[Season]] = {
     val seasonCollection = db.collection[BSONCollection]("seasons")
@@ -389,7 +361,6 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
 
     runModels(analyzers, academicYear).flatMap(ml => {
       val lfwr: List[Future[WriteResult]] = ml.map(modr => {
-        logger.info("Saving or update model " + modr.name)
         val selector = BSONDocument("name" -> modr.name)
         val future: Future[Option[ModelResult]] = modelCollection.find(selector).one[ModelResult](ReadPreference.primaryPreferred)
 
