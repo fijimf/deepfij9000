@@ -1,5 +1,6 @@
 package models
 
+import modules.scraping.model.GameData
 import org.joda.time.LocalDate
 
 object Game {

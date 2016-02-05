@@ -4,7 +4,8 @@ import java.util.concurrent.Executors
 
 import akka.actor.Actor
 import com.google.inject.Inject
-import controllers.{TeamConfMap, TeamMap, TeamMaster, TeamMasterRec}
+import modules.scraping.requests.{JsonScrapeRequest, HtmlScrapeRequest}
+import modules.scraping.util.HTML
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
@@ -26,7 +27,7 @@ class ScrapingActor @Inject()(ws: WSClient) extends Actor {
   }
 
   override def receive: Receive = {
-    case r:ScrapeRequest[_] =>
+    case r:HtmlScrapeRequest[_] =>
         handleScrape(r)
     case r:JsonScrapeRequest[_] =>
         handleJsonScrape(r)
@@ -34,7 +35,7 @@ class ScrapingActor @Inject()(ws: WSClient) extends Actor {
       println("Unexpected message")
   }
 
-  def handleScrape(r: ScrapeRequest[_]): Unit = {
+  def handleScrape(r: HtmlScrapeRequest[_]): Unit = {
     val mySender = sender()
     logger.info("Requesting " + r.url)
     ws.url(r.url).get().onComplete {

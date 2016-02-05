@@ -1,6 +1,6 @@
 package modules.scraping
 
-import controllers.TeamMasterRec
+import modules.scraping.model.TeamMasterRec
 import play.api.Logger
 
 import scala.xml.Node

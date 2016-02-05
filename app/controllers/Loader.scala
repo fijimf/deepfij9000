@@ -2,6 +2,7 @@ package controllers
 
 import javax.inject.Inject
 
+import _root_.util.DateIterator
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
@@ -9,21 +10,19 @@ import com.google.inject.name.Named
 import controllers.analysis.{Analyzer, ScoringModel, WonLostModel}
 import controllers.dao.{AliasDao, TeamDao}
 import models._
-import modules.scraping._
-import org.joda.time.LocalDate
-import org.joda.time.LocalTime
-import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
+import modules.scraping.model.{GameData, TeamConfMap, TeamMap}
+import modules.scraping.requests._
+import modules.scraping.util.{ConferenceTourneySolver, NeutralSiteSolver}
+import org.joda.time.{LocalDate, LocalTime}
+import org.joda.time.format.DateTimeFormat
 import play.api.Logger
 import play.api.libs.concurrent.Akka
-import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.{Action, Controller}
-import play.modules.reactivemongo.json.collection.JSONCollection
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.{WriteResult, MultiBulkWriteResult, UpdateWriteResult}
+import reactivemongo.api.commands.{MultiBulkWriteResult, UpdateWriteResult, WriteResult}
 import reactivemongo.bson._
-import util.DateIterator
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
