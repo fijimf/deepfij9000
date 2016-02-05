@@ -1,15 +1,12 @@
 package controllers.dao
 
-import models.{Team, SocialData, LogoUrls, Colors}
-import play.api.libs.json.{JsObject, Json}
-import play.modules.reactivemongo.json.collection.JSONCollection
+import models.{Colors, LogoUrls, SocialData, Team}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.MultiBulkWriteResult
-import reactivemongo.api.{ReadPreference, DefaultDB}
-import reactivemongo.bson.{BSONDocumentReader, BSONHandler, BSONDocument, Macros}
+import reactivemongo.api.{DefaultDB, ReadPreference}
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONHandler, Macros}
 
 import scala.concurrent.Future
-import play.modules.reactivemongo.json._
 
 object TeamDao {
   implicit val colorsHandler: BSONHandler[BSONDocument, Colors] = Macros.handler[Colors]

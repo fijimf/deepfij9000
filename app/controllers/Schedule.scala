@@ -6,18 +6,16 @@ import models._
 import models.viewdata.TeamPage
 import org.joda.time.LocalDate
 import play.api.Logger
-import play.api.data._
 import play.api.data.Forms._
-import play.api.i18n.{Lang, Messages, I18nSupport, MessagesApi}
+import play.api.data._
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc.{Action, Controller}
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.MultiBulkWriteResult
 import reactivemongo.bson._
-import scala.concurrent.duration._
 
-import scala.collection.immutable.Iterable
+import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Random
 

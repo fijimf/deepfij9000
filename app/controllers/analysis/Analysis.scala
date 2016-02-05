@@ -1,6 +1,6 @@
 package controllers.analysis
 
-import models.{Game, Season}
+import models.Season
 import org.joda.time.LocalDate
 
 

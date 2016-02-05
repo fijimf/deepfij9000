@@ -1,13 +1,10 @@
 package controllers.dao
 
-import play.api.libs.json.{JsObject, Json}
-import play.modules.reactivemongo.json.collection.JSONCollection
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.{ReadPreference, DefaultDB}
+import reactivemongo.api.{DefaultDB, ReadPreference}
 import reactivemongo.bson.BSONDocument
 
 import scala.concurrent.Future
-import play.modules.reactivemongo.json._
 
 case class AliasDao(db: DefaultDB) {
 

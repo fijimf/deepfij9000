@@ -13,8 +13,8 @@ import models._
 import modules.scraping.model.{GameData, TeamConfMap, TeamMap}
 import modules.scraping.requests._
 import modules.scraping.util.{ConferenceTourneySolver, NeutralSiteSolver}
-import org.joda.time.{LocalDate, LocalTime}
 import org.joda.time.format.DateTimeFormat
+import org.joda.time.{LocalDate, LocalTime}
 import play.api.Logger
 import play.api.libs.concurrent.Akka
 import play.api.mvc.{Action, Controller}

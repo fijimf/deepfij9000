@@ -1,7 +1,7 @@
 package modules.scraping.requests
 
-import modules.scraping.model.{TeamMap, TeamConfMap, ConferenceMap}
 import modules.scraping.NcaaOrgTeamScraper
+import modules.scraping.model.{ConferenceMap, TeamConfMap, TeamMap}
 
 import scala.xml.Node
 

@@ -4,15 +4,14 @@ import java.util.concurrent.Executors
 
 import akka.actor.Actor
 import com.google.inject.Inject
-import modules.scraping.requests.{JsonScrapeRequest, HtmlScrapeRequest}
+import modules.scraping.requests.{HtmlScrapeRequest, JsonScrapeRequest}
 import modules.scraping.util.HTML
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 
-import scala.concurrent.{Future, ExecutionContext}
-import scala.util.{Try, Failure, Success}
-import scala.xml.Node
+import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success, Try}
 
 class ScrapingActor @Inject()(ws: WSClient) extends Actor {
   val logger: Logger = Logger(this.getClass)

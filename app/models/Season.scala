@@ -2,7 +2,6 @@
 package models
 
 import org.joda.time.LocalDate
-
 import util.DateIterator
 
 case class Season(academicYear: Int, games: List[Game], conferenceMap: List[ConferenceMembership]) {
