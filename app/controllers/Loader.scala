@@ -80,6 +80,15 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
   }
 
   def loadConferenceMaps = Action.async {
+    val seasons: Future[List[Season]] = extractConferenceMap // TODO make this better
+
+    seasons.flatMap(saveSeasons).map(wr => {
+      Ok(wr.toString)
+    })
+
+  }
+
+  def extractConferenceMap: Future[List[Season]] = {
     val confAlignmentByYear: Map[Int, Map[String, List[String]]] = academicYears.map(yr => {
       yr -> aacToBigEastHack(Await.result(conferenceAlignmentByYear(yr), 1.minute))
     }).toMap
@@ -105,11 +114,7 @@ class Loader @Inject()(@Named("data-load-actor") teamLoad: ActorRef, val reactiv
       }).toList
       Season(year, List.empty[Game], teamMap)
     }).toList)
-
-    seasons.flatMap(saveSeasons).map(wr => {
-      Ok(wr.toString)
-    })
-
+    seasons
   }
 
   def aacToBigEastHack(confMap: Map[String, List[String]]): Map[String, List[String]] = {

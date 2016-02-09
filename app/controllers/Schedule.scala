@@ -101,23 +101,24 @@ class Schedule @Inject()(val reactiveMongoApi: ReactiveMongoApi, val messagesApi
   )
 
   def editTeam(key: String) = Action.async { implicit request =>
-
+    log.info("Editing " +key)
     for (
-      tm <- loadTeamFromDb(key)
+      tmap <- loadTeamMap()
     ) yield {
-      tm match {
+      tmap.get(key) match {
         case Some(t) =>
           form.fill(t)
-          Ok(views.html.teamEdit(form.fill(t), t.name))
+          Ok(views.html.teamEdit(form.fill(t), t.name, tmap.keySet.toList))
         case None => Ok(views.html.resourceNotFound("Team", key))
       }
     }
   }
 
   def saveTeam = Action { implicit request =>
+    log.info("Saving team changes.")
     form.bindFromRequest.fold(
       formWithErrors => {
-        BadRequest(views.html.teamEdit(formWithErrors, formWithErrors("name").value.getOrElse("Missing")))
+        BadRequest(views.html.teamEdit(formWithErrors, formWithErrors("name").value.getOrElse("Missing"),List()))
       },
       teamData => {
         /* binding success, you get the actual value. */
