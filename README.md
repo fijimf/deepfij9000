@@ -18,6 +18,10 @@ A `Game` conssts of `date`, `time` and `location` of the game, the `key` of the 
 
 A `Result` contains the final scores for the home and away team as well as the number of periods the game took.
 
+A `Team` consists of a key, a name, and other reference information about the team, for example nickname, colors, official URL, etc.  Note that conference is season dependent, and thus not stored as part of the team.
+
+A `Conference` consists of a key, a name, and potentially other reference data about the conference.  It does not contain the memeber teams.
+
 Analysis
 --------
 ```scala
