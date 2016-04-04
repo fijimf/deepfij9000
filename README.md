@@ -3,20 +3,20 @@ Deep Fij 9000
 
 This is the latest iteration of my college basketball analysis website, implemented with the Play Framework.
 
-Basicall scrapes the NCAA website for data and generates some rudimentary analyses.
+Basically scrapes the NCAA website for data and generates some rudimentary analyses.
 
 The Deep Fij Modelling Framework
 ================================
 The Data Model
 --------------
 
-The focus of the data model is the Season.  
+The focus of the data model is the `Season`.  
 
-A Season is identified by its year, and can be interrogated to return all of the games within that season and all of the results of games which have been completed.  Given the String key of a team, it can be interrogated to identify the conference of the team represented by the key.  It can be interrogated to privide a List of Date as well as Team. 
+A `Season` is identified by its `year`, and can be interrogated to return all of the `game`s within that `season` and all of the `result`s of `game`s which have been completed.  Given the `key` (a `String`) of a `team`, the `season` can be interrogated to identify the `conference` of the `team` represented by the `key`.  A `season` can be interrogated to privide a `List[LocalDate]`of dates on which `game`s occurred, as well as a `List[Team]` of `team`s which are participating in `game`s. 
 
-A Game conssts of time and location of the game, the key of the home and away teams, whether the game was played at a neutral site, whether it was a conference tournamnet game, whether it was an NCAA tournament game (and the seeds of the teams if it was).  
+A `Game` conssts of `date`, `time` and `location` of the game, the `key` of the home and away `team`s, whether the game was played at a neutral site, whether it was a conference tournament game, whether it was an NCAA tournament game (and the seeds of the teams if it was).  
 
-A Result contains the final scores for the home and away team as well as the number of periods the game took.
+A `Result` contains the final scores for the home and away team as well as the number of periods the game took.
 
 Analysis
 --------
@@ -87,3 +87,11 @@ Moving from Prediction to Rating
 Moving form Rating to Prediction
 --------------------------------
 
+A Note on Architecture
+----------------------
+
+It's useful to consider the whole as a suite of separate applications, united mostly in sharing a data store.
+
+1. The Scraper - responsible for communiating with 3rd party websites to download information and push to the data store
+1. The Analyzer - Periodically generates analyses and pushes these to the data store
+1. The Website - responsible for synthesizing useful views out of the data store
